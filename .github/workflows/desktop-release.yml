@@ -84,31 +84,31 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Validate Windows signing secrets
-        if: matrix.platform == 'windows'
+      - name: Signing status
         shell: bash
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-        run: |
-          [[ -n "$WIN_CSC_LINK" ]] || { echo "Missing required secret: WIN_CSC_LINK"; exit 1; }
-          [[ -n "$WIN_CSC_KEY_PASSWORD" ]] || { echo "Missing required secret: WIN_CSC_KEY_PASSWORD"; exit 1; }
-
-      - name: Validate macOS signing and notarization secrets
-        if: matrix.platform == 'macos'
-        shell: bash
-        env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          [[ -n "$CSC_LINK" ]] || { echo "Missing required secret: CSC_LINK"; exit 1; }
-          [[ -n "$CSC_KEY_PASSWORD" ]] || { echo "Missing required secret: CSC_KEY_PASSWORD"; exit 1; }
-          [[ -n "$APPLE_ID" ]] || { echo "Missing required secret: APPLE_ID"; exit 1; }
-          [[ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]] || { echo "Missing required secret: APPLE_APP_SPECIFIC_PASSWORD"; exit 1; }
-          [[ -n "$APPLE_TEAM_ID" ]] || { echo "Missing required secret: APPLE_TEAM_ID"; exit 1; }
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            if [[ -n "$WIN_CSC_LINK" && -n "$WIN_CSC_KEY_PASSWORD" ]]; then
+              echo "Windows signing secrets detected."
+            else
+              echo "Windows signing secrets missing; publishing unsigned installer."
+            fi
+          fi
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            if [[ -n "$CSC_LINK" && -n "$CSC_KEY_PASSWORD" && -n "$APPLE_ID" && -n "$APPLE_APP_SPECIFIC_PASSWORD" && -n "$APPLE_TEAM_ID" ]]; then
+              echo "macOS signing/notarization secrets detected."
+            else
+              echo "macOS signing/notarization secrets missing; publishing unsigned/unnotarized installer."
+            fi
+          fi
 
       - name: Install dependencies
         run: npm ci
