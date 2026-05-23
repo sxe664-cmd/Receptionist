@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -70,8 +70,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "kirklandsig",
-        "repo": "AIReceptionist"
+        "owner": "sxe664-cmd",
+        "repo": "Receptionist"
       }
     ]
   }
