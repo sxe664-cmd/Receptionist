@@ -1,0 +1,21 @@
+{
+  "items": [
+    {
+      "id": "fixture-1",
+      "iCalUID": "fixture-1@example.com",
+      "summary": "Sample appointment",
+      "start": {
+        "dateTime": "2026-06-05T09:00:00-04:00",
+        "timeZone": "America/New_York"
+      },
+      "end": {
+        "dateTime": "2026-06-05T09:30:00-04:00",
+        "timeZone": "America/New_York"
+      },
+      "attendees": [
+        {"email": "patient@example.com"}
+      ]
+    }
+  ]
+}
+

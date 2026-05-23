@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HIRA Receptionist Console</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="window-titlebar" aria-label="Window controls">
+    <div class="window-titlebar__drag" aria-hidden="true"></div>
+    <div class="window-titlebar__controls">
+      <button id="windowMinimizeBtn" class="window-control" type="button" aria-label="Minimize">
+        <svg class="window-control__icon" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M5 12h14" />
+        </svg>
+      </button>
+      <button id="windowMaximizeBtn" class="window-control" type="button" aria-label="Maximize or restore">
+        <svg class="window-control__icon window-control__icon--maximize" aria-hidden="true" viewBox="0 0 24 24">
+          <rect x="5" y="5" width="14" height="14" rx="2" />
+        </svg>
+        <svg class="window-control__icon window-control__icon--restore" aria-hidden="true" viewBox="0 0 24 24" hidden>
+          <path d="M9 5h10v10" />
+          <path d="M15 9H5v10h10z" />
+        </svg>
+      </button>
+      <button id="windowCloseBtn" class="window-control close" type="button" aria-label="Close">
+        <svg class="window-control__icon" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M6 6l12 12" />
+          <path d="M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Business navigation">
+      <div class="brand-block">
+        <img class="brand-logo" src="assets/hira-logo.png" alt="HIRA Restorative Wellness Center" />
+      </div>
+
+      <section class="appointment-calendar" aria-label="Appointment date filter">
+        <div class="calendar-view-toggle" role="group" aria-label="Appointment view">
+          <button class="calendar-view-button active" type="button" data-calendar-view="day">Day</button>
+          <button class="calendar-view-button" type="button" data-calendar-view="week">Week</button>
+          <button class="calendar-view-button" type="button" data-calendar-view="month">Month</button>
+        </div>
+
+        <div class="calendar-topline">
+          <button id="calendarPrevBtn" class="calendar-nav-button" type="button" aria-label="Previous period">&lt;</button>
+          <div>
+            <div id="calendarMonthLabel" class="calendar-month-label">Month</div>
+            <div id="calendarRangeLabel" class="calendar-range-label">Selected range</div>
+          </div>
+          <button id="calendarNextBtn" class="calendar-nav-button" type="button" aria-label="Next period">&gt;</button>
+        </div>
+
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>Su</span>
+          <span>Mo</span>
+          <span>Tu</span>
+          <span>We</span>
+          <span>Th</span>
+          <span>Fr</span>
+          <span>Sa</span>
+        </div>
+        <div id="calendarDays" class="calendar-days" role="grid" aria-label="Select appointment date"></div>
+
+        <button id="calendarTodayBtn" class="calendar-today-button" type="button">Today</button>
+      </section>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-actions" aria-label="Calendar actions">
+        <button class="sidebar-action sidebar-action--sync" data-reminder="sync" type="button">Sync Calendar</button>
+        <button class="sidebar-action sidebar-action--import" data-reminder="contacts import" type="button">Import Contacts</button>
+      </div>
+
+      <button id="settingsTabBtn" class="settings-entry" type="button" data-view="settings" aria-label="Settings" title="Settings">
+        <svg class="settings-entry__icon" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M19.14 12.94a7.8 7.8 0 0 0 .05-.94 7.8 7.8 0 0 0-.05-.94l2.11-1.65a.5.5 0 0 0 .12-.63l-2-3.46a.5.5 0 0 0-.6-.22l-2.49 1a7.4 7.4 0 0 0-1.63-.94l-.38-2.65a.5.5 0 0 0-.5-.43h-4a.5.5 0 0 0-.5.43l-.38 2.65c-.58.23-1.12.54-1.63.94l-2.49-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.63l2.11 1.65a7.8 7.8 0 0 0-.05.94c0 .32.02.63.05.94L2.92 14.6a.5.5 0 0 0-.12.63l2 3.46a.5.5 0 0 0 .6.22l2.49-1c.5.4 1.04.71 1.63.94l.38 2.65a.5.5 0 0 0 .5.43h4a.5.5 0 0 0 .5-.43l.38-2.65c.58-.23 1.12-.54 1.63-.94l2.49 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.63l-2.11-1.65Z"/>
+          <circle cx="12" cy="12" r="2.75"/>
+        </svg>
+      </button>
+
+      <button id="operateTabBtn" class="sr-only" type="button" data-view="operate">Dashboard</button>
+    </aside>
+
+    <main class="workspace">
+      <section id="operateView" class="view active" aria-label="Dashboard">
+        <section class="action-card operations-card">
+          <div class="card-heading">
+            <div>
+              <h2>Calendar & Reminders</h2>
+            </div>
+          </div>
+
+          <div class="operations-layout">
+            <div class="appointments-panel">
+              <div class="mini-heading">
+                <span>Appointments</span>
+                <button id="refreshAppointmentsBtn" class="mini-button" type="button">Delete</button>
+              </div>
+              <div id="appointmentsList" class="appointments-list">Sync calendar to import appointments.</div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="settingsView" class="view" aria-labelledby="settingsTitle">
+        <button id="backToDashboardBtn" class="back-link" type="button">
+          <svg class="back-link__icon" aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M19 12H5" />
+            <path d="m12 19-7-7 7-7" />
+          </svg>
+          Back to Dashboard
+        </button>
+        <div class="settings-head">
+          <div>
+            <h2 id="settingsTitle">Settings</h2>
+            <p>Business profile, sender defaults, and appointment message templates.</p>
+          </div>
+          <div class="settings-head__actions">
+            <button id="saveBtnTop" type="button">Save and validate</button>
+          </div>
+        </div>
+
+        <form id="settingsForm" class="settings-form">
+          <div class="settings-form__grid">
+            <section class="form-section">
+              <div class="form-copy">
+                <h3>Contact defaults</h3>
+                <p>Sender and transfer values used by messages and reminders.</p>
+              </div>
+              <div class="field-grid">
+                <label for="defaultTransferNumber">Transfer number</label>
+                <input id="defaultTransferNumber" autocomplete="off" placeholder="+15551234567" />
+
+                <label for="emailFrom">Email from</label>
+                <input id="emailFrom" autocomplete="off" placeholder="HIRA Receptionist <receptionist@example.com>" />
+
+                <label for="smsFromNumber">SMS from number</label>
+                <input id="smsFromNumber" autocomplete="off" placeholder="+15557654321" />
+              </div>
+            </section>
+
+            <section class="form-section email-setup-section">
+              <div class="form-copy">
+                <h3>Email setup</h3>
+                <p>Configure confirmation and reminder email delivery.</p>
+              </div>
+              <div class="field-grid">
+                <label for="emailSetupFrom">Sent from</label>
+                <input id="emailSetupFrom" autocomplete="off" placeholder="HIRA Receptionist <contact@hirarw.com>" />
+
+                <label for="smtpUsername">Gmail address</label>
+                <input id="smtpUsername" autocomplete="off" placeholder="contact@hirarw.com" />
+
+                <label for="smtpPassword">Gmail app password</label>
+                <input id="smtpPassword" type="password" autocomplete="new-password" placeholder="16-character Google app password" />
+
+                <div class="setup-row">
+                  <button id="saveEmailSetupBtn" type="button">Save email setup</button>
+                  <span id="emailSetupStatus" class="setup-status">Not checked</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="form-section calendar-setup-section">
+              <div class="form-copy">
+                <h3>Calendar connection</h3>
+                <p>Connect Google Calendar and Gmail OAuth.</p>
+              </div>
+              <div class="settings-action-panel">
+                <button id="setupGoogleBtn" class="sidebar-action sidebar-action--connect" type="button">Connect Calendar</button>
+              </div>
+            </section>
+          </div>
+
+          <section class="form-section form-section--templates">
+            <div class="form-copy">
+              <h3>Message templates</h3>
+              <p>Blank fields use built-in defaults. Placeholders are shown inside each field.</p>
+            </div>
+            <div class="template-list">
+              <details>
+                <summary>Confirmation</summary>
+                <label for="confirmationEmailSubject">Email subject</label>
+                <input id="confirmationEmailSubject" autocomplete="off" placeholder="Appointment confirmed: {appointment_time}" />
+                <label for="confirmationEmailText">Email body</label>
+                <textarea id="confirmationEmailText" rows="5" placeholder="Hi {recipient_name},&#10;&#10;Your appointment with {business_name} is confirmed for {appointment_time}."></textarea>
+                <label for="confirmationSms">SMS</label>
+                <textarea id="confirmationSms" rows="3" placeholder="{business_name}: your appointment is confirmed for {appointment_time}. Reply STOP to opt out."></textarea>
+              </details>
+
+              <details>
+                <summary>Reminder</summary>
+                <label for="reminderEmailSubject">Email subject</label>
+                <input id="reminderEmailSubject" autocomplete="off" placeholder="Appointment reminder: {appointment_time}" />
+                <label for="reminderEmailText">Email body</label>
+                <textarea id="reminderEmailText" rows="5" placeholder="Hi {recipient_name},&#10;&#10;This is a reminder from {business_name} about your appointment on {appointment_time}."></textarea>
+                <label for="reminderSms">SMS</label>
+                <textarea id="reminderSms" rows="3" placeholder="{business_name}: reminder for your appointment on {appointment_time}. Reply STOP to opt out."></textarea>
+              </details>
+
+              <details>
+                <summary>Quick text actions</summary>
+                <label for="quickSmsTemplate">General SMS template</label>
+                <textarea id="quickSmsTemplate" rows="3" placeholder="Hi {recipient_name}, this is {business_name}. Please call us at {default_transfer_number}. Reply STOP to opt out."></textarea>
+                <label for="quickEmailTemplate">General email template</label>
+                <textarea id="quickEmailTemplate" rows="4" placeholder="Hi {recipient_name},&#10;&#10;This is {business_name}. Please contact us when you have a moment."></textarea>
+                <label for="quickCallScript">Call script</label>
+                <textarea id="quickCallScript" rows="3" placeholder="Hi {recipient_name}, this is {business_name} calling about your appointment."></textarea>
+              </details>
+            </div>
+          </section>
+        </form>
+      </section>
+    </main>
+  </div>
+  <section id="updateBanner" class="update-banner" hidden aria-live="polite">
+    <div class="update-banner__copy">
+      <strong id="updateBannerTitle">Update available</strong>
+      <span id="updateBannerDetail">Downloading in the background…</span>
+    </div>
+    <button id="updateRestartBtn" class="update-banner__button" type="button" hidden>Restart to Update</button>
+  </section>
+  <div id="toast" class="toast" hidden></div>
+  <script src="appointment_email.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
