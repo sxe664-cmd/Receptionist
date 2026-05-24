@@ -5,12 +5,13 @@ const { Menu } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
 const projectRoot = path.resolve(__dirname, '..');
-const pythonCmd = process.env.PYTHON || process.env.PYTHON_EXECUTABLE || 'python';
+const pythonOverride = process.env.PYTHON || process.env.PYTHON_EXECUTABLE || '';
 let mainWindow;
 let agentProcess = null;
 let updateReady = false;
 let updateState = { state: 'idle' };
 let updateAvailableInfo = null;
+let cachedPythonCmd = null;
 
 function compareSemver(left, right) {
   const l = String(left || '').split('.').map((part) => Number.parseInt(part, 10) || 0);
@@ -121,9 +122,15 @@ function setupUpdaterEvents() {
   });
 }
 
-function runPython(args, options = {}) {
+function pythonCandidates() {
+  if (pythonOverride) return [pythonOverride];
+  if (process.platform === 'win32') return ['python', 'py', 'python3'];
+  return ['python3', 'python', '/usr/bin/python3'];
+}
+
+function runPythonCommand(command, args, options = {}) {
   return new Promise((resolve) => {
-    const child = spawn(pythonCmd, args, {
+    const child = spawn(command, args, {
       cwd: projectRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1', ...(options.env || {}) },
       shell: false,
@@ -140,9 +147,57 @@ function runPython(args, options = {}) {
       stderr += text;
       if (options.stream) text.split(/\r?\n/).filter(Boolean).forEach((line) => emitLog(`${options.stream}:err`, line));
     });
-    child.on('error', (error) => resolve({ ok: false, code: null, stdout, stderr: String(error) }));
-    child.on('close', (code) => resolve({ ok: code === 0, code, stdout, stderr }));
+    child.on('error', (error) => resolve({ ok: false, code: null, stdout, stderr: String(error), command }));
+    child.on('close', (code) => resolve({ ok: code === 0, code, stdout, stderr, command }));
   });
+}
+
+function isMissingPython(result) {
+  if (result.code !== null) return false;
+  return /enoent|not found/i.test(String(result.stderr || ''));
+}
+
+async function resolvePythonCommand() {
+  if (cachedPythonCmd) return cachedPythonCmd;
+  const candidates = pythonCandidates();
+  for (const candidate of candidates) {
+    const result = await runPythonCommand(candidate, ['--version']);
+    if (result.code === 0) {
+      cachedPythonCmd = candidate;
+      emitLog('python', `Using runtime: ${candidate}`);
+      return cachedPythonCmd;
+    }
+    if (!isMissingPython(result)) {
+      cachedPythonCmd = candidate;
+      emitLog('python', `Using runtime: ${candidate}`);
+      return cachedPythonCmd;
+    }
+  }
+  return null;
+}
+
+async function runPython(args, options = {}) {
+  const candidates = cachedPythonCmd ? [cachedPythonCmd] : pythonCandidates();
+  let lastResult = null;
+  for (const candidate of candidates) {
+    const result = await runPythonCommand(candidate, args, options);
+    lastResult = result;
+    if (result.ok) {
+      cachedPythonCmd = candidate;
+      return result;
+    }
+    if (isMissingPython(result)) continue;
+    cachedPythonCmd = candidate;
+    return result;
+  }
+  const attempted = candidates.join(', ');
+  return {
+    ok: false,
+    code: null,
+    stdout: '',
+    stderr: `Python runtime not found. Tried: ${attempted}`,
+    command: lastResult?.command || null,
+  };
 }
 
 async function runDesktopConfig(args) {
@@ -282,6 +337,12 @@ ipcMain.handle('dialog:chooseConfig', async () => {
 
 ipcMain.handle('agent:start', async (_event, options = {}) => {
   if (agentProcess) return { ok: false, message: 'Agent is already running.' };
+  const pythonCmd = await resolvePythonCommand();
+  if (!pythonCmd) {
+    const message = 'Python runtime not found. Install Python 3 or set PYTHON/PYTHON_EXECUTABLE.';
+    emitLog('agent:err', message);
+    return { ok: false, message };
+  }
   const env = { ...process.env, PYTHONUNBUFFERED: '1' };
   if (options.playgroundMode) env.RECEPTIONIST_AGENT_NAME = '';
   agentProcess = spawn(pythonCmd, ['-m', 'receptionist.agent', 'dev'], {
