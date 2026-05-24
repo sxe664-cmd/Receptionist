@@ -81,6 +81,9 @@ def _snapshot(path: Path) -> dict[str, Any]:
     reminders = _safe_get(data, "reminders", default={}) or {}
     if not isinstance(reminders, dict):
         reminders = {}
+    calendar = _safe_get(data, "calendar", default={}) or {}
+    if not isinstance(calendar, dict):
+        calendar = {}
     email = _safe_get(data, "email", default={}) or {}
     if not isinstance(email, dict):
         email = {}
@@ -99,6 +102,10 @@ def _snapshot(path: Path) -> dict[str, Any]:
                 "enabled": bool(reminders.get("enabled", False)),
                 "channels": reminders.get("channels", []),
                 "email_provider": reminders.get("email_provider"),
+            },
+            "calendar": {
+                "enabled": bool(calendar.get("enabled", False)),
+                "calendar_id": calendar.get("calendar_id"),
             },
             "sms_provider": {
                 "type": sms_provider.get("type", "fake"),
@@ -135,7 +142,7 @@ def list_businesses(_args: argparse.Namespace) -> None:
             slug = path.stem
         except Exception:
             continue
-        businesses.append({"slug": slug, "path": _rel(path), "name": name})
+        businesses.append({"slug": slug, "path": _rel(path), "name": name, "mode": data.get("mode", "demo")})
         calendar_enabled = bool(_safe_get(data, "calendar", "enabled", default=False))
         reminders_enabled = bool(_safe_get(data, "reminders", "enabled", default=False))
         businesses[-1]["calendar_enabled"] = calendar_enabled

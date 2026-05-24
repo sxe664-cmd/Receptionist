@@ -261,6 +261,50 @@ function businessSlugFromPath(configPath) {
   return (configPath || '').split(/[\\/]/).pop().replace(/\.ya?ml$/i, '');
 }
 
+function selectedBusinessConfig() {
+  return state.selectedBusiness?.config || {};
+}
+
+function selectedBusinessName() {
+  return selectedBusinessConfig().business_name || businessSlugFromPath(state.selectedConfig) || 'selected business';
+}
+
+function errorSummary(result) {
+  const lines = String(result?.stderr || result?.stdout || '')
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const exceptionLine = [...lines].reverse().find((line) => /^[A-Za-z_][\w.]*Error:/.test(line));
+  return exceptionLine || lines.find((line) => !line.startsWith('Traceback ')) || 'See console log.';
+}
+
+function canSyncSelectedCalendar() {
+  const cfg = selectedBusinessConfig();
+  const reminders = cfg.reminders || {};
+  const calendar = cfg.calendar || {};
+  return Boolean(reminders.enabled && calendar.enabled);
+}
+
+function businessPriority(business) {
+  const slug = String(business?.slug || businessSlugFromPath(business?.path) || '').toLowerCase();
+  const name = String(business?.name || '').toLowerCase();
+  let score = 0;
+  if (slug === 'santiago' || name === 'hira') score += 1000;
+  if (business?.mode === 'production') score += 200;
+  if (!slug.startsWith('example-') && !name.startsWith('example ') && !name.includes('acme')) score += 100;
+  if (business?.calendar_enabled && business?.reminders_enabled) score += 50;
+  else if (business?.calendar_enabled) score += 30;
+  else if (business?.reminders_enabled) score += 20;
+  return score;
+}
+
+function preferredBusinessPath() {
+  return [...state.businesses]
+    .sort((left, right) => businessPriority(right) - businessPriority(left))
+    .find((business) => business.path)?.path || null;
+}
+
 function renderBusiness(data) {
   state.selectedBusiness = data;
   const cfg = data.config || {};
@@ -354,10 +398,7 @@ function renderCalendarFilter() {
 async function loadBusinesses(selectPath = null) {
   const result = await window.receptionist.listBusinesses();
   state.businesses = result.businesses || [];
-  const preferred = state.businesses.find((business) => business.calendar_enabled)?.path
-    || state.businesses.find((business) => business.reminders_enabled)?.path
-    || state.businesses[0]?.path
-    || null;
+  const preferred = preferredBusinessPath();
   state.selectedConfig = selectPath || preferred;
   await loadSelectedBusiness();
 }
@@ -677,6 +718,11 @@ async function runReminderCommand(commandText) {
     showToast('Reminder command is empty.', true);
     return;
   }
+  if (command === 'sync' && !canSyncSelectedCalendar()) {
+    showToast(`Sync Calendar is not configured for ${selectedBusinessName()}. Select a business with calendar and reminders enabled.`, true);
+    appendLog({ source: 'reminders:err', line: `Skipped sync for ${businessSlugFromPath(state.selectedConfig)}: calendar/reminders not enabled.` });
+    return;
+  }
   const businessSlug = businessSlugFromPath(state.selectedConfig);
   const resolvedCommand = subcommand ? `${command} ${subcommand}` : command;
   appendLog({ source: 'console', line: `Running reminders ${resolvedCommand} for ${businessSlug}` });
@@ -689,8 +735,7 @@ async function runReminderCommand(commandText) {
   if (result.ok) {
     showToast(`Reminder command finished: ${resolvedCommand}`);
   } else {
-    const details = String(result.stderr || result.stdout || '').trim().split(/\r?\n/).filter(Boolean);
-    const reason = details[0] || 'See console log.';
+    const reason = errorSummary(result);
     showToast(`Reminder command failed: ${resolvedCommand} - ${reason}`, true);
   }
   if (result.ok && command === 'sync') await loadAppointments();
@@ -782,10 +827,7 @@ addClick('setupGoogleBtn', async () => {
         const result = await window.receptionist.listBusinesses();
         state.businesses = result.businesses || [];
       }
-      const fallbackConfig = state.businesses.find((business) => business.calendar_enabled)?.path
-        || state.businesses.find((business) => business.reminders_enabled)?.path
-        || state.businesses[0]?.path
-        || null;
+      const fallbackConfig = preferredBusinessPath();
       if (!fallbackConfig) {
         showToast('No business config found. Add one in config/businesses first.', true);
         return;

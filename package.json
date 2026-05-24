@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
