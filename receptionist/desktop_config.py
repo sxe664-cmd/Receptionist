@@ -27,7 +27,10 @@ from receptionist.reminders.models import AppointmentEvent
 from receptionist.reminders.store import ReminderStore
 from receptionist.reminders.service import send_appointment_email as send_manual_appointment_email
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(
+    os.environ.get("RECEPTIONIST_DESKTOP_ROOT")
+    or Path(__file__).resolve().parents[1]
+).resolve()
 BUSINESS_DIR = PROJECT_ROOT / "config" / "businesses"
 ENV_LOCAL_PATH = PROJECT_ROOT / ".env.local"
 
@@ -132,12 +135,9 @@ def list_businesses(_args: argparse.Namespace) -> None:
             if not isinstance(data.get("business"), dict):
                 continue
             name = _safe_get(data, "business", "name", default=path.stem)
-            slug = path.stem
-            if slug != "santiago" and "santiago receptionist" not in str(name).lower():
-                continue
         except Exception:
             continue
-        businesses.append({"slug": slug, "path": _rel(path), "name": name})
+        businesses.append({"slug": path.stem, "path": _rel(path), "name": name})
     _print_json({"businesses": businesses})
 
 
