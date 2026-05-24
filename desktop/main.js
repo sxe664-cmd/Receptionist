@@ -14,15 +14,114 @@ let updateState = { state: 'idle' };
 let updateAvailableInfo = null;
 let cachedPythonCmd = null;
 let cachedPythonArgsPrefix = [];
+let cachedPackagedPythonEnv = null;
+
+function bundledRuntimeDir() {
+  return path.join(process.resourcesPath, 'python-runtime');
+}
+
+function pathForPyvenv(value) {
+  return String(value || '');
+}
+
+function packagedRuntimeManifest() {
+  if (!app.isPackaged) return null;
+  const runtimeDir = bundledRuntimeDir();
+  const manifestPath = path.join(runtimeDir, 'runtime-manifest.json');
+  if (!fs.existsSync(manifestPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  } catch (error) {
+    emitLog('python:err', `Failed to read bundled Python runtime manifest: ${error.message}`);
+    return null;
+  }
+}
+
+function packagedBasePythonExecutable(manifest = packagedRuntimeManifest()) {
+  if (!manifest) return null;
+  const candidate = path.join(bundledRuntimeDir(), manifest.baseDir || 'base', manifest.baseExecutable || '');
+  return fs.existsSync(candidate) ? candidate : null;
+}
+
+function findPackagedSitePackages(runtimeDir) {
+  const candidates = [path.join(runtimeDir, 'Lib', 'site-packages')];
+  const posixLib = path.join(runtimeDir, 'lib');
+  if (fs.existsSync(posixLib)) {
+    for (const entry of fs.readdirSync(posixLib, { withFileTypes: true })) {
+      if (entry.isDirectory() && /^python\d+\.\d+/.test(entry.name)) {
+        candidates.push(path.join(posixLib, entry.name, 'site-packages'));
+      }
+    }
+  }
+  return candidates.filter((candidate) => fs.existsSync(candidate));
+}
+
+function packagedPythonEnv() {
+  if (!app.isPackaged) return {};
+  if (cachedPackagedPythonEnv) return cachedPackagedPythonEnv;
+  const runtimeDir = bundledRuntimeDir();
+  const pythonPathParts = [projectRoot, ...findPackagedSitePackages(runtimeDir)];
+  cachedPackagedPythonEnv = {
+    PYTHONPATH: [
+      ...pythonPathParts,
+      process.env.PYTHONPATH || '',
+    ].filter(Boolean).join(path.delimiter),
+  };
+  return cachedPackagedPythonEnv;
+}
+
+function rewriteBundledPyvenvConfig(runtimeDir, manifest) {
+  const cfgPath = path.join(runtimeDir, 'pyvenv.cfg');
+  if (!fs.existsSync(cfgPath)) return;
+
+  const baseExecutable = path.join(runtimeDir, manifest.baseDir || 'base', manifest.baseExecutable || '');
+  if (!fs.existsSync(baseExecutable)) return;
+
+  const home = path.dirname(baseExecutable);
+  const command = `${pathForPyvenv(baseExecutable)} -m venv ${pathForPyvenv(runtimeDir)}`;
+  const existing = fs.readFileSync(cfgPath, 'utf8').split(/\r?\n/).filter(Boolean);
+  const next = [];
+  const seen = new Set();
+  for (const line of existing) {
+    const key = line.split('=')[0]?.trim();
+    if (key === 'home') {
+      next.push(`home = ${pathForPyvenv(home)}`);
+      seen.add('home');
+    } else if (key === 'executable') {
+      next.push(`executable = ${pathForPyvenv(baseExecutable)}`);
+      seen.add('executable');
+    } else if (key === 'command') {
+      next.push(`command = ${command}`);
+      seen.add('command');
+    } else {
+      next.push(line);
+    }
+  }
+  if (!seen.has('home')) next.push(`home = ${pathForPyvenv(home)}`);
+  if (!seen.has('executable')) next.push(`executable = ${pathForPyvenv(baseExecutable)}`);
+  if (!seen.has('command')) next.push(`command = ${command}`);
+  fs.writeFileSync(cfgPath, `${next.join('\n')}\n`, 'utf8');
+}
+
+function ensurePackagedPythonRuntime() {
+  if (!app.isPackaged) return;
+  const runtimeDir = bundledRuntimeDir();
+  const manifest = packagedRuntimeManifest();
+  if (manifest) rewriteBundledPyvenvConfig(runtimeDir, manifest);
+}
 
 function packagedPythonExecutable() {
   if (!app.isPackaged) return null;
+  const basePython = packagedBasePythonExecutable();
+  if (basePython) return basePython;
+  ensurePackagedPythonRuntime();
+  const runtimeDir = bundledRuntimeDir();
   if (process.platform === 'win32') {
-    return path.join(process.resourcesPath, 'python-runtime', 'Scripts', 'python.exe');
+    return path.join(runtimeDir, 'Scripts', 'python.exe');
   }
-  const preferred = path.join(process.resourcesPath, 'python-runtime', 'bin', 'python3');
+  const preferred = path.join(runtimeDir, 'bin', 'python3');
   if (fs.existsSync(preferred)) return preferred;
-  return path.join(process.resourcesPath, 'python-runtime', 'bin', 'python');
+  return path.join(runtimeDir, 'bin', 'python');
 }
 
 function compareSemver(left, right) {
@@ -183,7 +282,7 @@ function runPythonCommand(command, prefixArgs, args, options = {}) {
   return new Promise((resolve) => {
     const child = spawn(command, [...prefixArgs, ...args], {
       cwd: projectRoot,
-      env: { ...process.env, PYTHONUNBUFFERED: '1', ...(options.env || {}) },
+      env: { ...process.env, PYTHONUNBUFFERED: '1', ...packagedPythonEnv(), ...(options.env || {}) },
       shell: false,
     });
     let stdout = '';
@@ -430,7 +529,7 @@ ipcMain.handle('agent:start', async (_event, options = {}) => {
     emitLog('agent:err', message);
     return { ok: false, message };
   }
-  const env = { ...process.env, PYTHONUNBUFFERED: '1' };
+  const env = { ...process.env, PYTHONUNBUFFERED: '1', ...packagedPythonEnv() };
   if (options.playgroundMode) env.RECEPTIONIST_AGENT_NAME = '';
   agentProcess = spawn(pythonCmd, ['-m', 'receptionist.agent', 'dev'], {
     cwd: projectRoot,

@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -62,16 +62,16 @@
       "artifactName": "AIReceptionist-macOS.${ext}",
       "target": [
         {
-            "target": "dmg",
-            "arch": [
+          "target": "dmg",
+          "arch": [
             "arm64"
-            ]
+          ]
         },
         {
-            "target": "zip",
-            "arch": [
+          "target": "zip",
+          "arch": [
             "arm64"
-            ]
+          ]
         }
       ]
     },
