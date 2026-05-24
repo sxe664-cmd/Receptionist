@@ -61,7 +61,7 @@ function main() {
   fs.mkdirSync(path.dirname(outDir), { recursive: true });
 
   const py = findPythonCommand(platform);
-  run(py.command, [...py.venvArgs, outDir], repoRoot);
+  run(py.command, [...py.venvArgs, '--copies', outDir], repoRoot);
 
   const pythonBin = platform === 'win'
     ? path.join(outDir, 'Scripts', 'python.exe')

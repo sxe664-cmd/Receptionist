@@ -487,7 +487,7 @@ The desktop app now uses Electron auto-updates from GitHub Releases.
 3. GitHub Actions runs `.github/workflows/desktop-release.yml`:
    - always runs desktop checks
    - publishes signed Windows + macOS installers only when `package.json` version changed from the previous commit
-   - expects `DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64` GitHub secret (base64 of Desktop OAuth client JSON) for embedded Connect Calendar setup
+   - expects `DESKTOP_GOOGLE_OAUTH_CLIENT_JSON` GitHub secret (raw Desktop OAuth client JSON) for embedded Connect Calendar setup
 4. Installed desktop clients detect and download the update automatically, then prompt the user to restart to apply it.
 
 If a commit reaches `main` without a version bump, release publishing is skipped.

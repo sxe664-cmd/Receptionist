@@ -87,20 +87,20 @@ jobs:
       - name: Validate embedded desktop OAuth client secret
         shell: bash
         env:
-          DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64: ${{ secrets.DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64 }}
+          DESKTOP_GOOGLE_OAUTH_CLIENT_JSON: ${{ secrets.DESKTOP_GOOGLE_OAUTH_CLIENT_JSON }}
         run: |
-          if [[ -z "$DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64" ]]; then
-            echo "Missing DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64 secret."
+          if [[ -z "$DESKTOP_GOOGLE_OAUTH_CLIENT_JSON" ]]; then
+            echo "Missing DESKTOP_GOOGLE_OAUTH_CLIENT_JSON secret."
             exit 1
           fi
 
       - name: Write embedded desktop OAuth client JSON
         shell: bash
         env:
-          DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64: ${{ secrets.DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64 }}
+          DESKTOP_GOOGLE_OAUTH_CLIENT_JSON: ${{ secrets.DESKTOP_GOOGLE_OAUTH_CLIENT_JSON }}
         run: |
           mkdir -p desktop/oauth
-          echo "$DESKTOP_GOOGLE_OAUTH_CLIENT_JSON_B64" | base64 --decode > desktop/oauth/google-calendar-oauth-client.json
+          printf '%s' "$DESKTOP_GOOGLE_OAUTH_CLIENT_JSON" > desktop/oauth/google-calendar-oauth-client.json
 
       - name: Signing status
         shell: bash
