@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import stat
+import shutil
 import sys
 from pathlib import Path
 
@@ -20,6 +21,7 @@ SCOPES = [
 ]
 DEFAULT_CONFIG_DIR = Path("config/businesses")
 DEFAULT_TOKEN_BASE = Path("~/.aireceptionist/secrets")
+EMBEDDED_OAUTH_ENV = "RECEPTIONIST_EMBEDDED_OAUTH_CLIENT"
 
 # Same shape as agent.py's RECEPTIONIST_CONFIG / job-metadata validation.
 # Without it, `python -m receptionist.booking setup ../../etc/passwd` would
@@ -80,6 +82,14 @@ def _run_setup(business_slug: str) -> int:
     client_file = secrets_dir / "google-calendar-oauth-client.json"
     token_file = (DEFAULT_TOKEN_BASE / business_slug / "google-calendar-oauth.json").expanduser()
     token_file.parent.mkdir(parents=True, exist_ok=True)
+
+    embedded_client = os.getenv(EMBEDDED_OAUTH_ENV, "").strip()
+    if not client_file.exists() and embedded_client:
+        embedded_path = Path(embedded_client).expanduser()
+        if embedded_path.exists():
+            client_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(embedded_path, client_file)
+            print(f"Seeded OAuth client JSON from bundled resource: {embedded_path}")
 
     if not client_file.exists():
         print(

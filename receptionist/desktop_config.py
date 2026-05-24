@@ -133,8 +133,6 @@ def list_businesses(_args: argparse.Namespace) -> None:
                 continue
             name = _safe_get(data, "business", "name", default=path.stem)
             slug = path.stem
-            if slug != "santiago" and "santiago receptionist" not in str(name).lower():
-                continue
         except Exception:
             continue
         businesses.append({"slug": slug, "path": _rel(path), "name": name})

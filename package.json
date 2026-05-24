@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.4",
+  "version": "0.1.7",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -35,6 +35,12 @@
     "directories": {
       "buildResources": "desktop/assets"
     },
+    "extraResources": [
+      {
+        "from": "desktop/oauth/google-calendar-oauth-client.json",
+        "to": "oauth/google-calendar-oauth-client.json"
+      }
+    ],
     "win": {
       "artifactName": "AIReceptionist-Windows-Setup.${ext}",
       "target": [

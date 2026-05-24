@@ -317,7 +317,13 @@ ipcMain.handle('agent:stop', async () => {
 ipcMain.handle('agent:status', async () => ({ running: Boolean(agentProcess), pid: agentProcess?.pid ?? null }));
 
 ipcMain.handle('booking:setup', async (_event, businessSlug) => {
-  const result = await runPython(['-m', 'receptionist.booking', 'setup', businessSlug], { stream: 'booking' });
+  const embeddedOauthClient = app.isPackaged
+    ? path.join(process.resourcesPath, 'oauth', 'google-calendar-oauth-client.json')
+    : path.join(projectRoot, 'desktop', 'oauth', 'google-calendar-oauth-client.json');
+  const result = await runPython(['-m', 'receptionist.booking', 'setup', businessSlug], {
+    stream: 'booking',
+    env: { RECEPTIONIST_EMBEDDED_OAUTH_CLIENT: embeddedOauthClient },
+  });
   return result;
 });
 

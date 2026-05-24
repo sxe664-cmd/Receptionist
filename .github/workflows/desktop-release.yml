@@ -110,6 +110,24 @@ jobs:
             fi
           fi
 
+      - name: Require embedded OAuth client secret
+        shell: bash
+        env:
+          DESKTOP_GOOGLE_OAUTH_CLIENT_JSON: ${{ secrets.DESKTOP_GOOGLE_OAUTH_CLIENT_JSON }}
+        run: |
+          if [[ -z "$DESKTOP_GOOGLE_OAUTH_CLIENT_JSON" ]]; then
+            echo "Missing required secret: DESKTOP_GOOGLE_OAUTH_CLIENT_JSON"
+            exit 1
+          fi
+
+      - name: Write embedded OAuth client JSON
+        shell: bash
+        env:
+          DESKTOP_GOOGLE_OAUTH_CLIENT_JSON: ${{ secrets.DESKTOP_GOOGLE_OAUTH_CLIENT_JSON }}
+        run: |
+          mkdir -p desktop/oauth
+          printf '%s' "$DESKTOP_GOOGLE_OAUTH_CLIENT_JSON" > desktop/oauth/google-calendar-oauth-client.json
+
       - name: Install dependencies
         run: npm ci
 

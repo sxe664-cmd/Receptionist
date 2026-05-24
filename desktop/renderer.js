@@ -758,13 +758,31 @@ Object.entries(views).forEach(([name, view]) => {
 });
 addClick('backToDashboardBtn', () => setView('operate'));
 addClick('setupGoogleBtn', async () => {
-  if (!state.selectedConfig) return;
-  const businessSlug = businessSlugFromPath(state.selectedConfig);
-  appendLog({ source: 'console', line: `Running Google Calendar and Gmail setup for ${businessSlug}` });
-  const result = await window.receptionist.setupBooking(businessSlug);
-  if (result.stdout) appendLog({ source: 'booking:out', line: result.stdout.trim() });
-  if (result.stderr) appendLog({ source: 'booking:err', line: result.stderr.trim() });
-  showToast(result.ok ? 'Google setup finished.' : 'Google setup needs attention. See console log.', !result.ok);
+  try {
+    if (!state.selectedConfig) {
+      const chosen = await window.receptionist.chooseConfig();
+      if (!chosen) {
+        showToast('Select a business config first.');
+        return;
+      }
+      state.selectedConfig = chosen;
+      await loadSelectedBusiness();
+    }
+    const businessSlug = businessSlugFromPath(state.selectedConfig);
+    appendLog({ source: 'console', line: `Running Google Calendar and Gmail setup for ${businessSlug}` });
+    const result = await window.receptionist.setupBooking(businessSlug);
+    if (result.stdout) appendLog({ source: 'booking:out', line: result.stdout.trim() });
+    if (result.stderr) appendLog({ source: 'booking:err', line: result.stderr.trim() });
+    if (result.ok) {
+      showToast('Google setup finished.');
+      return;
+    }
+    const details = String(result.stderr || result.stdout || '').trim().split(/\r?\n/).filter(Boolean);
+    const reason = details[0] || 'See console log.';
+    showToast(`Google setup failed: ${reason}`, true);
+  } catch (error) {
+    showToast(error?.message || 'Failed to start Google setup.', true);
+  }
 });
 appointmentsList?.addEventListener('click', (event) => {
   const showMoreButton = event.target.closest('[data-appointments-show-more]');
