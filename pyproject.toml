@@ -23,6 +23,7 @@ dependencies = [
     "google-auth>=2.32",
     "google-auth-oauthlib>=1.2",
     "python-dateutil>=2.9",
+    "tzdata>=2025.2",
 ]
 
 [project.optional-dependencies]
