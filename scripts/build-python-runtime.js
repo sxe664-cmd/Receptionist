@@ -112,6 +112,23 @@ function rewritePyvenvConfig({ baseExecutable, venvExecutable }) {
   fs.writeFileSync(path.join(runtimeDir, runtimeManifestName), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 }
 
+function bundledExecutableCandidates(basePrefix, bundledBaseDir, baseExecutable) {
+  const candidates = [];
+  const relative = path.relative(basePrefix, baseExecutable);
+  if (relative && !relative.startsWith('..') && !path.isAbsolute(relative)) {
+    candidates.push(path.join(bundledBaseDir, relative));
+  }
+  candidates.push(path.join(bundledBaseDir, path.basename(baseExecutable)));
+  candidates.push(path.join(bundledBaseDir, 'bin', path.basename(baseExecutable)));
+  if (process.platform === 'win32') {
+    candidates.push(path.join(bundledBaseDir, 'python.exe'));
+  } else {
+    candidates.push(path.join(bundledBaseDir, 'bin', 'python3'));
+    candidates.push(path.join(bundledBaseDir, 'bin', 'python'));
+  }
+  return [...new Set(candidates)];
+}
+
 function bundleBasePython(pythonExe) {
   const raw = capture(pythonExe, ['-c', [
     'import json, sys',
@@ -141,9 +158,10 @@ function bundleBasePython(pythonExe) {
     },
   });
 
-  const bundledBaseExecutable = path.join(bundledBaseDir, path.relative(basePrefix, baseExecutable));
-  if (!fs.existsSync(bundledBaseExecutable)) {
-    throw new Error(`Copied base Python executable missing at ${bundledBaseExecutable}`);
+  const bundledBaseExecutable = bundledExecutableCandidates(basePrefix, bundledBaseDir, baseExecutable)
+    .find((candidate) => fs.existsSync(candidate));
+  if (!bundledBaseExecutable) {
+    throw new Error(`Copied base Python executable missing. Checked: ${bundledExecutableCandidates(basePrefix, bundledBaseDir, baseExecutable).join(', ')}`);
   }
   rewritePyvenvConfig({ baseExecutable: bundledBaseExecutable, venvExecutable: pythonExe });
 }
