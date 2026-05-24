@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -10,11 +10,11 @@
     "desktop:dev": "node scripts/desktop-dev.js",
     "desktop:runtime:build": "node scripts/build-python-runtime.js",
     "desktop:check": "node --check desktop/main.js && node --check desktop/preload.js && node --check desktop/appointment_email.js && node --check desktop/appointment_menu.js && node --check desktop/renderer.js",
-    "desktop:dist": "npm run desktop:runtime:build && electron-builder --win nsis --mac dmg zip --x64 --universal --publish never",
+    "desktop:dist": "npm run desktop:runtime:build && electron-builder --win nsis --mac dmg zip --x64 --arm64 --publish never",
     "desktop:dist:win": "npm run desktop:runtime:build && electron-builder --win nsis --x64 --publish never",
-    "desktop:dist:mac": "npm run desktop:runtime:build && electron-builder --mac dmg zip --universal --publish never",
+    "desktop:dist:mac": "npm run desktop:runtime:build && electron-builder --mac dmg zip --arm64 --publish never",
     "desktop:release:win": "npm run desktop:runtime:build && electron-builder --win nsis --x64 --publish always",
-    "desktop:release:mac": "npm run desktop:runtime:build && electron-builder --mac dmg zip --universal --publish always"
+    "desktop:release:mac": "npm run desktop:runtime:build && electron-builder --mac dmg zip --arm64 --publish always"
   },
   "devDependencies": {
     "electron": "^33.3.1",
@@ -62,16 +62,16 @@
       "artifactName": "AIReceptionist-macOS.${ext}",
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "universal"
-          ]
+            "target": "dmg",
+            "arch": [
+            "arm64"
+            ]
         },
         {
-          "target": "zip",
-          "arch": [
-            "universal"
-          ]
+            "target": "zip",
+            "arch": [
+            "arm64"
+            ]
         }
       ]
     },
