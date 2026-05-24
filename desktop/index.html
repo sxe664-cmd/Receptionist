@@ -175,6 +175,20 @@
                 <button id="setupGoogleBtn" class="sidebar-action sidebar-action--connect" type="button">Connect Calendar</button>
               </div>
             </section>
+            <section class="form-section update-settings-section">
+              <div class="form-copy">
+                <h3>App Updates</h3>
+                <p>Check for new releases and install updates.</p>
+              </div>
+              <div class="update-controls">
+                <div id="settingsUpdateStatus" class="setup-status">Up to date</div>
+                <div class="update-controls__actions">
+                  <button id="checkUpdatesBtn" type="button">Check for updates</button>
+                  <button id="downloadUpdateBtn" type="button" hidden disabled>Download update</button>
+                  <button id="installUpdateBtn" type="button" hidden disabled>Install update</button>
+                </div>
+              </div>
+            </section>
           </div>
 
           <section class="form-section form-section--templates">
@@ -218,13 +232,6 @@
       </section>
     </main>
   </div>
-  <section id="updateBanner" class="update-banner" hidden aria-live="polite">
-    <div class="update-banner__copy">
-      <strong id="updateBannerTitle">Update available</strong>
-      <span id="updateBannerDetail">Downloading in the background…</span>
-    </div>
-    <button id="updateRestartBtn" class="update-banner__button" type="button" hidden>Restart to Update</button>
-  </section>
   <div id="toast" class="toast" hidden></div>
   <script src="appointment_email.js"></script>
   <script src="renderer.js"></script>

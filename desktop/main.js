@@ -9,6 +9,8 @@ const pythonCmd = process.env.PYTHON || process.env.PYTHON_EXECUTABLE || 'python
 let mainWindow;
 let agentProcess = null;
 let updateReady = false;
+let updateState = { state: 'idle' };
+let updateAvailableInfo = null;
 
 function compareSemver(left, right) {
   const l = String(left || '').split('.').map((part) => Number.parseInt(part, 10) || 0);
@@ -64,20 +66,16 @@ function emitUpdate(payload) {
   });
 }
 
-function setupAutoUpdates() {
-  if (!app.isPackaged) {
-    emitLog('updater', 'Skipping auto-update check in development mode.');
-    return;
-  }
-
-  autoUpdater.autoDownload = true;
+function setupUpdaterEvents() {
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowPrerelease = false;
   autoUpdater.allowDowngrade = false;
 
   autoUpdater.on('checking-for-update', () => {
     emitLog('updater', 'Checking for updates...');
-    emitUpdate({ state: 'checking' });
+    updateState = { state: 'checking' };
+    emitUpdate(updateState);
   });
 
   autoUpdater.on('update-available', (info) => {
@@ -88,33 +86,38 @@ function setupAutoUpdates() {
       return;
     }
     emitLog('updater', `Update available: ${version}`);
-    emitUpdate({ state: 'available', version });
+    updateAvailableInfo = info;
+    updateState = { state: 'available', version };
+    emitUpdate(updateState);
   });
 
   autoUpdater.on('download-progress', (progress) => {
     const percent = Math.max(0, Math.min(100, Number(progress?.percent || 0)));
-    emitUpdate({ state: 'downloading', percent: Math.round(percent) });
+    updateState = { state: 'downloading', percent: Math.round(percent) };
+    emitUpdate(updateState);
   });
 
   autoUpdater.on('update-not-available', () => {
     emitLog('updater', 'No updates available.');
-    emitUpdate({ state: 'idle' });
+    updateAvailableInfo = null;
+    updateReady = false;
+    updateState = { state: 'idle', message: 'Up to date' };
+    emitUpdate(updateState);
   });
 
   autoUpdater.on('update-downloaded', (info) => {
     const version = info?.version || 'unknown';
     updateReady = true;
     emitLog('updater', `Update downloaded: ${version}. Awaiting restart.`);
-    emitUpdate({ state: 'downloaded', version });
+    updateState = { state: 'downloaded', version };
+    emitUpdate(updateState);
   });
 
   autoUpdater.on('error', (error) => {
-    emitLog('updater:err', error?.message || 'Update error');
-    emitUpdate({ state: 'error', message: error?.message || 'Auto-update failed.' });
-  });
-
-  autoUpdater.checkForUpdates().catch((error) => {
-    emitLog('updater:err', error?.message || 'Failed to start auto-update check');
+    const message = error?.message || 'Auto-update failed.';
+    emitLog('updater:err', message);
+    updateState = { state: 'error', message };
+    emitUpdate(updateState);
   });
 }
 
@@ -215,6 +218,51 @@ ipcMain.handle('update:install', async () => {
   return { ok: true };
 });
 
+ipcMain.handle('update:check', async () => {
+  if (!app.isPackaged) {
+    const message = 'Update checks are only available in installed builds.';
+    updateState = { state: 'error', message };
+    emitUpdate(updateState);
+    return { ok: false, message };
+  }
+  updateReady = false;
+  updateAvailableInfo = null;
+  updateState = { state: 'checking' };
+  emitUpdate(updateState);
+  try {
+    await autoUpdater.checkForUpdates();
+    return { ok: true };
+  } catch (error) {
+    const message = error?.message || 'Failed to check for updates.';
+    updateState = { state: 'error', message };
+    emitUpdate(updateState);
+    return { ok: false, message };
+  }
+});
+
+ipcMain.handle('update:download', async () => {
+  if (!app.isPackaged) {
+    const message = 'Update downloads are only available in installed builds.';
+    updateState = { state: 'error', message };
+    emitUpdate(updateState);
+    return { ok: false, message };
+  }
+  if (!updateAvailableInfo) {
+    return { ok: false, message: 'No available update to download.' };
+  }
+  updateState = { state: 'downloading', percent: 0 };
+  emitUpdate(updateState);
+  try {
+    await autoUpdater.downloadUpdate();
+    return { ok: true };
+  } catch (error) {
+    const message = error?.message || 'Failed to download update.';
+    updateState = { state: 'error', message };
+    emitUpdate(updateState);
+    return { ok: false, message };
+  }
+});
+
 ipcMain.handle('config:openExternal', async (_event, configPath) => {
   const { shell } = require('electron');
   await shell.openPath(path.resolve(projectRoot, configPath));
@@ -312,7 +360,7 @@ ipcMain.handle('reminders:run', async (_event, payload) => {
 
 app.whenReady().then(() => {
   createWindow();
-  setupAutoUpdates();
+  setupUpdaterEvents();
 });
 app.on('window-all-closed', () => {
   if (agentProcess) agentProcess.kill('SIGTERM');

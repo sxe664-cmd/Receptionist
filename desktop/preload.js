@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('receptionist', {
   renameAppointment: (payload) => ipcRenderer.invoke('appointment:rename', payload),
   deleteAppointment: (payload) => ipcRenderer.invoke('appointment:delete', payload),
   runReminderCommand: (payload) => ipcRenderer.invoke('reminders:run', payload),
+  checkUpdate: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   onProcessLog: (callback) => ipcRenderer.on('process-log', (_event, payload) => callback(payload)),
   onAgentStatus: (callback) => ipcRenderer.on('agent-status', (_event, payload) => callback(payload)),

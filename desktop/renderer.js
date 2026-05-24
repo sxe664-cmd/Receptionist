@@ -19,10 +19,10 @@ const appointmentsList = $('appointmentsList');
 const calendarDays = $('calendarDays');
 const calendarMonthLabel = $('calendarMonthLabel');
 const calendarRangeLabel = $('calendarRangeLabel');
-const updateBanner = $('updateBanner');
-const updateBannerTitle = $('updateBannerTitle');
-const updateBannerDetail = $('updateBannerDetail');
-const updateRestartBtn = $('updateRestartBtn');
+const settingsUpdateStatus = $('settingsUpdateStatus');
+const checkUpdatesBtn = $('checkUpdatesBtn');
+const downloadUpdateBtn = $('downloadUpdateBtn');
+const installUpdateBtn = $('installUpdateBtn');
 const appointmentEmailApi = globalThis.AppointmentEmail || {};
 const views = {
   operate: {
@@ -187,35 +187,52 @@ function showToast(message, isError = false) {
 }
 
 function renderUpdaterStatus(payload = {}) {
-  if (!updateBanner || !updateBannerTitle || !updateBannerDetail || !updateRestartBtn) return;
+  if (!settingsUpdateStatus || !checkUpdatesBtn || !downloadUpdateBtn || !installUpdateBtn) return;
   const stateName = String(payload.state || '');
-  if (!stateName || stateName === 'idle' || stateName === 'checking' || stateName === 'available') {
-    updateBanner.hidden = true;
-    updateRestartBtn.hidden = true;
+  checkUpdatesBtn.disabled = stateName === 'checking' || stateName === 'downloading';
+  downloadUpdateBtn.hidden = true;
+  downloadUpdateBtn.disabled = true;
+  installUpdateBtn.hidden = true;
+  installUpdateBtn.disabled = true;
+
+  if (!stateName || stateName === 'idle') {
+    settingsUpdateStatus.textContent = 'Up to date';
+    settingsUpdateStatus.className = 'setup-status ready';
     return;
   }
-
-  updateBanner.hidden = false;
-  updateRestartBtn.hidden = true;
+  if (stateName === 'checking') {
+    settingsUpdateStatus.textContent = 'Checking for updates...';
+    settingsUpdateStatus.className = 'setup-status';
+    return;
+  }
+  if (stateName === 'available') {
+    const version = payload.version ? `Version ${payload.version} available` : 'Update available';
+    settingsUpdateStatus.textContent = version;
+    settingsUpdateStatus.className = 'setup-status ready';
+    downloadUpdateBtn.hidden = false;
+    downloadUpdateBtn.disabled = false;
+    return;
+  }
   if (stateName === 'downloading') {
-    updateBannerTitle.textContent = 'Downloading update';
     const percent = Number(payload.percent);
-    updateBannerDetail.textContent = Number.isFinite(percent)
-      ? `Download progress: ${Math.max(0, Math.min(100, Math.round(percent)))}%`
-      : 'Downloading in the background.';
+    settingsUpdateStatus.textContent = Number.isFinite(percent)
+      ? `Downloading update (${Math.max(0, Math.min(100, Math.round(percent)))}%)`
+      : 'Downloading update...';
+    settingsUpdateStatus.className = 'setup-status';
     return;
   }
   if (stateName === 'downloaded') {
-    updateBannerTitle.textContent = 'Update ready';
-    updateBannerDetail.textContent = payload.version
-      ? `Version ${payload.version} is ready to install.`
-      : 'The latest version is ready to install.';
-    updateRestartBtn.hidden = false;
+    settingsUpdateStatus.textContent = payload.version
+      ? `Ready to install ${payload.version}`
+      : 'Ready to install';
+    settingsUpdateStatus.className = 'setup-status ready';
+    installUpdateBtn.hidden = false;
+    installUpdateBtn.disabled = false;
     return;
   }
   if (stateName === 'error') {
-    updateBannerTitle.textContent = 'Update check failed';
-    updateBannerDetail.textContent = payload.message || 'The app will retry on next launch.';
+    settingsUpdateStatus.textContent = payload.message || 'Update check failed';
+    settingsUpdateStatus.className = 'setup-status error';
   }
 }
 
@@ -722,7 +739,17 @@ addClick('refreshAppointmentsBtn', async () => {
   await deleteSelectedAppointments(button);
 });
 addClick('saveEmailSetupBtn', saveEmailSetup);
-addClick('updateRestartBtn', async () => {
+addClick('checkUpdatesBtn', async () => {
+  const result = await window.receptionist.checkUpdate();
+  if (!result?.ok) showToast(result?.message || 'Failed to check for updates.', true);
+});
+addClick('downloadUpdateBtn', async () => {
+  const confirmed = window.confirm('Download the available update now?');
+  if (!confirmed) return;
+  const result = await window.receptionist.downloadUpdate();
+  if (!result?.ok) showToast(result?.message || 'Failed to start update download.', true);
+});
+addClick('installUpdateBtn', async () => {
   const result = await window.receptionist.installUpdate();
   if (!result?.ok) showToast(result?.message || 'No update is ready to install yet.', true);
 });
@@ -815,6 +842,7 @@ document.querySelectorAll('[data-reminder]').forEach((button) => {
 setView('operate');
 renderCalendarFilter();
 syncDeleteControl();
+renderUpdaterStatus({ state: 'idle' });
 loadBusinesses().catch((error) => showToast(error.message, true));
 
 
