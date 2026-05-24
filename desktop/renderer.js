@@ -354,7 +354,11 @@ function renderCalendarFilter() {
 async function loadBusinesses(selectPath = null) {
   const result = await window.receptionist.listBusinesses();
   state.businesses = result.businesses || [];
-  state.selectedConfig = selectPath || state.businesses[0]?.path || null;
+  const preferred = state.businesses.find((business) => business.calendar_enabled)?.path
+    || state.businesses.find((business) => business.reminders_enabled)?.path
+    || state.businesses[0]?.path
+    || null;
+  state.selectedConfig = selectPath || preferred;
   await loadSelectedBusiness();
 }
 
@@ -665,16 +669,30 @@ function formatAppointmentTime(value) {
 
 async function runReminderCommand(commandText) {
   if (!state.selectedConfig) return;
-  const [command, subcommand] = commandText.split(' ');
+  const normalizedText = String(commandText || '').trim().replace(/\s+/g, ' ');
+  const parts = normalizedText.split(' ').filter(Boolean);
+  const command = (parts[0] || '').toLowerCase().replace(/[^a-z-]/g, '');
+  const subcommand = (parts[1] || '').toLowerCase().replace(/[^a-z-]/g, '');
+  if (!command) {
+    showToast('Reminder command is empty.', true);
+    return;
+  }
   const businessSlug = businessSlugFromPath(state.selectedConfig);
-  appendLog({ source: 'console', line: `Running reminders ${commandText} for ${businessSlug}` });
+  const resolvedCommand = subcommand ? `${command} ${subcommand}` : command;
+  appendLog({ source: 'console', line: `Running reminders ${resolvedCommand} for ${businessSlug}` });
   const result = await window.receptionist.runReminderCommand({
-    command: subcommand ? `${command} ${subcommand}` : command,
+    command: resolvedCommand,
     businessSlug,
   });
   if (result.stdout) appendLog({ source: 'reminders:out', line: result.stdout.trim() });
   if (result.stderr) appendLog({ source: 'reminders:err', line: result.stderr.trim() });
-  showToast(result.ok ? `Reminder command finished: ${commandText}` : `Reminder command failed: ${commandText}`, !result.ok);
+  if (result.ok) {
+    showToast(`Reminder command finished: ${resolvedCommand}`);
+  } else {
+    const details = String(result.stderr || result.stdout || '').trim().split(/\r?\n/).filter(Boolean);
+    const reason = details[0] || 'See console log.';
+    showToast(`Reminder command failed: ${resolvedCommand} - ${reason}`, true);
+  }
   if (result.ok && command === 'sync') await loadAppointments();
 }
 
@@ -760,12 +778,19 @@ addClick('backToDashboardBtn', () => setView('operate'));
 addClick('setupGoogleBtn', async () => {
   try {
     if (!state.selectedConfig) {
-      const chosen = await window.receptionist.chooseConfig();
-      if (!chosen) {
-        showToast('Select a business config first.');
+      if (!state.businesses.length) {
+        const result = await window.receptionist.listBusinesses();
+        state.businesses = result.businesses || [];
+      }
+      const fallbackConfig = state.businesses.find((business) => business.calendar_enabled)?.path
+        || state.businesses.find((business) => business.reminders_enabled)?.path
+        || state.businesses[0]?.path
+        || null;
+      if (!fallbackConfig) {
+        showToast('No business config found. Add one in config/businesses first.', true);
         return;
       }
-      state.selectedConfig = chosen;
+      state.selectedConfig = fallbackConfig;
       await loadSelectedBusiness();
     }
     const businessSlug = businessSlugFromPath(state.selectedConfig);

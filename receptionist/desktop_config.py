@@ -136,6 +136,10 @@ def list_businesses(_args: argparse.Namespace) -> None:
         except Exception:
             continue
         businesses.append({"slug": slug, "path": _rel(path), "name": name})
+        calendar_enabled = bool(_safe_get(data, "calendar", "enabled", default=False))
+        reminders_enabled = bool(_safe_get(data, "reminders", "enabled", default=False))
+        businesses[-1]["calendar_enabled"] = calendar_enabled
+        businesses[-1]["reminders_enabled"] = reminders_enabled
     _print_json({"businesses": businesses})
 
 

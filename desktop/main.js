@@ -356,10 +356,11 @@ ipcMain.handle('appointment:delete', async (_event, payload) => {
 });
 
 ipcMain.handle('reminders:run', async (_event, payload) => {
-  const commandParts = String(payload.command || '').split(' ').filter(Boolean);
+  const normalizedCommand = String(payload.command || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const commandParts = normalizedCommand.split(' ').map((part) => part.replace(/[^a-z-]/g, '')).filter(Boolean);
   const args = ['-m', 'receptionist.reminders', ...commandParts, '--business', payload.businessSlug];
-  if (payload.command === 'sync' && payload.fixture) args.push('--fixture', payload.fixture);
-  if (payload.command === 'run-due' && payload.now) args.push('--now', payload.now);
+  if (commandParts[0] === 'sync' && payload.fixture) args.push('--fixture', payload.fixture);
+  if (commandParts[0] === 'run-due' && payload.now) args.push('--now', payload.now);
   const result = await runPython(args, { stream: 'reminders' });
   return result;
 });

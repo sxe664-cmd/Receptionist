@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import re
@@ -84,12 +85,12 @@ def _run_setup(business_slug: str) -> int:
     token_file.parent.mkdir(parents=True, exist_ok=True)
 
     embedded_client = os.getenv(EMBEDDED_OAUTH_ENV, "").strip()
-    if not client_file.exists() and embedded_client:
+    if embedded_client:
         embedded_path = Path(embedded_client).expanduser()
         if embedded_path.exists():
             client_file.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(embedded_path, client_file)
-            print(f"Seeded OAuth client JSON from bundled resource: {embedded_path}")
+            print(f"Synced OAuth client JSON from bundled resource: {embedded_path}")
 
     if not client_file.exists():
         print(
@@ -102,6 +103,23 @@ def _run_setup(business_slug: str) -> int:
             f"  4. Save it as {client_file}\n"
             f"\n"
             f"Then re-run: python -m receptionist.booking setup {business_slug}\n",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        raw = json.loads(client_file.read_text(encoding="utf-8"))
+        installed = raw.get("installed") if isinstance(raw, dict) else None
+        client_id = (installed or {}).get("client_id", "")
+        client_secret = (installed or {}).get("client_secret", "")
+        if not client_id or not client_secret:
+            raise ValueError("missing client_id/client_secret")
+        if "REPLACE_IN_CI" in client_id or "REPLACE_IN_CI" in client_secret:
+            raise ValueError("placeholder OAuth client JSON is still present")
+    except Exception as exc:
+        print(
+            f"\nOAuth client JSON is invalid at {client_file}: {exc}\n"
+            f"Use a valid Desktop OAuth client JSON from Google Cloud.\n",
             file=sys.stderr,
         )
         return 2
