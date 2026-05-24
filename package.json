@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.6",
+  "version": "0.1.4",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -9,14 +9,11 @@
     "desktop": "electron desktop/main.js",
     "desktop:dev": "node scripts/desktop-dev.js",
     "desktop:check": "node --check desktop/main.js && node --check desktop/preload.js && node --check desktop/appointment_email.js && node --check desktop/appointment_menu.js && node --check desktop/renderer.js",
-    "desktop:runtime:win": "node scripts/build-python-runtime.js --platform win --out desktop/python-runtime/win",
-    "desktop:runtime:mac": "node scripts/build-python-runtime.js --platform mac --out desktop/python-runtime/mac",
-    "desktop:runtime:linux": "node scripts/build-python-runtime.js --platform linux --out desktop/python-runtime/linux",
-    "desktop:dist": "electron-builder --win nsis --mac dmg zip --x64 --arm64 --publish never",
+    "desktop:dist": "electron-builder --win nsis --mac dmg zip --x64 --universal --publish never",
     "desktop:dist:win": "electron-builder --win nsis --x64 --publish never",
-    "desktop:dist:mac": "electron-builder --mac dmg zip --arm64 --publish never",
-    "desktop:release:win": "npm run desktop:runtime:win && electron-builder --win nsis --x64 --publish always",
-    "desktop:release:mac": "npm run desktop:runtime:mac && electron-builder --mac dmg zip --arm64 --publish always"
+    "desktop:dist:mac": "electron-builder --mac dmg zip --universal --publish never",
+    "desktop:release:win": "electron-builder --win nsis --x64 --publish always",
+    "desktop:release:mac": "electron-builder --mac dmg zip --universal --publish always"
   },
   "devDependencies": {
     "electron": "^33.3.1",
@@ -30,28 +27,10 @@
     "productName": "HIRA Receptionist Console",
     "files": [
       "desktop/**/*",
-      "!desktop/python-runtime/**/*",
-      "!desktop/oauth/**/*",
       "receptionist/**/*",
       "config/**/*",
       "scripts/**/*",
       "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "desktop/python-runtime",
-        "to": "python-runtime",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "desktop/oauth",
-        "to": "oauth",
-        "filter": [
-          "google-calendar-oauth-client.json"
-        ]
-      }
     ],
     "directories": {
       "buildResources": "desktop/assets"
@@ -73,13 +52,13 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64"
+            "universal"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "arm64"
+            "universal"
           ]
         }
       ]

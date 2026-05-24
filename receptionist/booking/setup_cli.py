@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import re
@@ -21,7 +20,6 @@ SCOPES = [
 ]
 DEFAULT_CONFIG_DIR = Path("config/businesses")
 DEFAULT_TOKEN_BASE = Path("~/.aireceptionist/secrets")
-EMBEDDED_OAUTH_CLIENT = os.environ.get("RECEPTIONIST_DESKTOP_EMBEDDED_OAUTH_CLIENT", "")
 
 # Same shape as agent.py's RECEPTIONIST_CONFIG / job-metadata validation.
 # Without it, `python -m receptionist.booking setup ../../etc/passwd` would
@@ -84,9 +82,6 @@ def _run_setup(business_slug: str) -> int:
     token_file.parent.mkdir(parents=True, exist_ok=True)
 
     if not client_file.exists():
-        _try_copy_embedded_oauth_client(client_file)
-
-    if not client_file.exists():
         print(
             f"\nOAuth client JSON not found at {client_file}.\n"
             f"\n"
@@ -119,25 +114,6 @@ def _run_setup(business_slug: str) -> int:
     print(f"[OK] Set auth.type: \"oauth\" and auth.oauth_token_file: \"{configured_token_path}\" in")
     print(f"     {config_path}")
     return 0
-
-
-def _try_copy_embedded_oauth_client(destination: Path) -> None:
-    source = Path(EMBEDDED_OAUTH_CLIENT).expanduser() if EMBEDDED_OAUTH_CLIENT else None
-    if not source or not source.exists():
-        return
-    try:
-        parsed = json.loads(source.read_text(encoding="utf-8"))
-        installed = parsed.get("installed") if isinstance(parsed, dict) else None
-        if not isinstance(installed, dict):
-            return
-        if not installed.get("client_id") or not installed.get("client_secret"):
-            return
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(json.dumps(parsed, indent=2), encoding="utf-8")
-        _set_0600(destination)
-    except Exception:
-        # Fall back to existing "missing client JSON" guidance below.
-        return
 
 
 def _set_0600(path: Path) -> None:

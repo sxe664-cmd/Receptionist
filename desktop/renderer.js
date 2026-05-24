@@ -162,7 +162,7 @@ function setSelectedDate(value) {
   state.appointmentsExpanded = false;
   resetSelectionState();
   syncDeleteControl();
-  loadAppointments().catch((error) => showToast(describeError(error), true));
+  loadAppointments().catch((error) => showToast(error.message, true));
 }
 
 function shiftCalendarPeriod(direction) {
@@ -184,19 +184,6 @@ function showToast(message, isError = false) {
   toast.hidden = false;
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => { toast.hidden = true; }, 6000);
-}
-
-function describeError(error) {
-  const raw = String(error?.message || error || '').trim();
-  if (!raw) return 'Unknown error';
-  try {
-    const parsed = JSON.parse(raw);
-    const fromPayload = parsed?.error?.message || parsed?.message;
-    if (fromPayload) return String(fromPayload);
-  } catch (_ignored) {
-    // ignore parse failure and use raw error text
-  }
-  return raw;
 }
 
 function renderUpdaterStatus(payload = {}) {
@@ -382,7 +369,7 @@ async function loadSelectedBusiness() {
     syncDeleteControl();
     await loadAppointments();
   } catch (error) {
-    showToast(describeError(error), true);
+    showToast(error.message, true);
     if (appointmentsList) appointmentsList.textContent = 'Appointments unavailable until the config validates.';
   }
 }
@@ -454,7 +441,7 @@ async function saveEmailSetup() {
       status.textContent = 'Email setup needs attention';
       status.className = 'setup-status error';
     }
-    showToast(describeError(error), true);
+    showToast(error.message, true);
   }
 }
 
@@ -481,7 +468,7 @@ async function saveSettings(event) {
     renderBusiness(data);
     showToast('Saved and validated business config.');
   } catch (error) {
-    showToast(describeError(error), true);
+    showToast(error.message, true);
     await loadSelectedBusiness();
   }
 }
@@ -655,7 +642,7 @@ async function deleteSelectedAppointments(button) {
     resetSelectionState();
     await loadAppointments();
   } catch (error) {
-    showToast(describeError(error), true);
+    showToast(error.message, true);
   } finally {
     button.disabled = false;
     syncDeleteControl();
@@ -698,7 +685,7 @@ function addClick(id, handler) {
   if (el) el.addEventListener('click', handler);
 }
 
-addClick('refreshBtn', () => loadBusinesses(state.selectedConfig).catch((e) => showToast(describeError(e), true)));
+addClick('refreshBtn', () => loadBusinesses(state.selectedConfig).catch((e) => showToast(e.message, true)));
 $('windowMinimizeBtn')?.addEventListener('click', () => window.windowControls?.minimize?.());
 $('windowMaximizeBtn')?.addEventListener('click', async () => {
   const result = await window.windowControls?.toggleMaximize?.();
@@ -723,7 +710,7 @@ document.querySelectorAll('[data-calendar-view]').forEach((button) => {
     state.appointmentsExpanded = false;
     resetSelectionState();
     syncDeleteControl();
-    loadAppointments().catch((error) => showToast(describeError(error), true));
+    loadAppointments().catch((error) => showToast(error.message, true));
   });
 });
 calendarDays?.addEventListener('click', (event) => {
@@ -771,34 +758,13 @@ Object.entries(views).forEach(([name, view]) => {
 });
 addClick('backToDashboardBtn', () => setView('operate'));
 addClick('setupGoogleBtn', async () => {
-  const button = $('setupGoogleBtn');
-  if (!state.selectedConfig) {
-    showToast('No business config is selected. Load a business first, then connect Google.', true);
-    return;
-  }
+  if (!state.selectedConfig) return;
   const businessSlug = businessSlugFromPath(state.selectedConfig);
-  if (!businessSlug) {
-    showToast('Could not determine business slug from selected config.', true);
-    return;
-  }
-  if (button) button.disabled = true;
-  try {
-    appendLog({ source: 'console', line: `Running Google Calendar and Gmail setup for ${businessSlug}` });
-    const result = await window.receptionist.setupBooking(businessSlug);
-    if (result?.stdout) appendLog({ source: 'booking:out', line: result.stdout.trim() });
-    if (result?.stderr) appendLog({ source: 'booking:err', line: result.stderr.trim() });
-    if (result?.ok) {
-      showToast('Google setup finished.');
-    } else {
-      const detail = result?.error?.message || result?.stderr || 'Google setup needs attention. See console log.';
-      showToast(detail, true);
-    }
-  } catch (error) {
-    showToast(describeError(error) || 'Google setup failed to start.', true);
-    appendLog({ source: 'booking:err', line: describeError(error) || 'Google setup failed to start.' });
-  } finally {
-    if (button) button.disabled = false;
-  }
+  appendLog({ source: 'console', line: `Running Google Calendar and Gmail setup for ${businessSlug}` });
+  const result = await window.receptionist.setupBooking(businessSlug);
+  if (result.stdout) appendLog({ source: 'booking:out', line: result.stdout.trim() });
+  if (result.stderr) appendLog({ source: 'booking:err', line: result.stderr.trim() });
+  showToast(result.ok ? 'Google setup finished.' : 'Google setup needs attention. See console log.', !result.ok);
 });
 appointmentsList?.addEventListener('click', (event) => {
   const showMoreButton = event.target.closest('[data-appointments-show-more]');
@@ -848,7 +814,7 @@ appointmentsList?.addEventListener('click', (event) => {
         showToast(`Email sent to ${recipient}.`);
       })
       .catch((error) => {
-        showToast(describeError(error), true);
+        showToast(error.message, true);
       })
       .finally(() => {
         button.disabled = false;
@@ -877,7 +843,7 @@ setView('operate');
 renderCalendarFilter();
 syncDeleteControl();
 renderUpdaterStatus({ state: 'idle' });
-loadBusinesses().catch((error) => showToast(describeError(error), true));
+loadBusinesses().catch((error) => showToast(error.message, true));
 
 
 

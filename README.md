@@ -476,8 +476,8 @@ The desktop app now uses Electron auto-updates from GitHub Releases.
 
 ### Install Desktop App
 
-- Windows installer: [Download for Windows](https://github.com/sxe664-cmd/Receptionist/releases/latest/download/AIReceptionist-Windows-Setup.exe)
-- macOS installer: [Download for macOS](https://github.com/sxe664-cmd/Receptionist/releases/latest/download/AIReceptionist-macOS.dmg)
+- Windows installer: [Download for Windows](https://github.com/kirklandsig/AIReceptionist/releases/latest/download/AIReceptionist-Windows-Setup.exe)
+- macOS installer: [Download for macOS](https://github.com/kirklandsig/AIReceptionist/releases/latest/download/AIReceptionist-macOS.dmg)
 
 1. Bump `package.json` version with semver:
    - patch (`x.y.Z`) for fixes
@@ -487,7 +487,6 @@ The desktop app now uses Electron auto-updates from GitHub Releases.
 3. GitHub Actions runs `.github/workflows/desktop-release.yml`:
    - always runs desktop checks
    - publishes signed Windows + macOS installers only when `package.json` version changed from the previous commit
-   - expects `DESKTOP_GOOGLE_OAUTH_CLIENT_JSON` GitHub secret (raw Desktop OAuth client JSON) for embedded Connect Calendar setup
 4. Installed desktop clients detect and download the update automatically, then prompt the user to restart to apply it.
 
 If a commit reaches `main` without a version bump, release publishing is skipped.
@@ -525,7 +524,7 @@ Calendar while keeping email/SMS delivery mocked:
    **Desktop app** and enable the Google Calendar API.
 2. Save the downloaded JSON as
    `secrets/<business-slug>/google-calendar-client.json`.
-3. In the desktop console, select the business and click **Connect Calendar**
+3. In the desktop console, select the business and click **Run Google setup**
    or run:
 
    ```bash
