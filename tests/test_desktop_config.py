@@ -10,7 +10,7 @@ def test_desktop_config_lists_business_files_only(monkeypatch, tmp_path):
     business_dir = tmp_path / "config" / "businesses"
     business_dir.mkdir(parents=True)
     (business_dir / "clinic.yaml").write_text(
-        "business:\n  name: Santiago Receptionist\n", encoding="utf-8"
+        "mode: production\nbusiness:\n  name: Santiago Receptionist\n", encoding="utf-8"
     )
     (business_dir / "contacts.yaml").write_text(
         "contacts: []\n", encoding="utf-8"
@@ -30,6 +30,9 @@ def test_desktop_config_lists_business_files_only(monkeypatch, tmp_path):
                     "slug": "clinic",
                     "path": "config/businesses/clinic.yaml",
                     "name": "Santiago Receptionist",
+                    "mode": "production",
+                    "calendar_enabled": False,
+                    "reminders_enabled": False,
                 }
             ]
         }
@@ -37,8 +40,8 @@ def test_desktop_config_lists_business_files_only(monkeypatch, tmp_path):
 
 
 def test_desktop_config_update_preserves_valid_business_config(tmp_path):
-    source = Path("config/businesses/example-dental.yaml")
-    target = tmp_path / "example-dental.yaml"
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
     target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
 
     args = desktop_config.build_parser().parse_args(
@@ -51,7 +54,7 @@ def test_desktop_config_update_preserves_valid_business_config(tmp_path):
             "--default-transfer-number",
             "+15550001111",
             "--email-from",
-            "Demo Dental <demo@example.com>",
+            "HIRA Demo <demo@example.com>",
             "--sms-from-number",
             "+15550002222",
             "--confirmation-sms",
@@ -66,7 +69,7 @@ def test_desktop_config_update_preserves_valid_business_config(tmp_path):
     assert snapshot["valid"] is True
     assert snapshot["config"]["communications"] == {
         "default_transfer_number": "+15550001111",
-        "email_from": "Demo Dental <demo@example.com>",
+        "email_from": "HIRA Demo <demo@example.com>",
         "sms_from_number": "+15550002222",
     }
     assert snapshot["config"]["message_templates"]["confirmation_sms"] == (
@@ -75,18 +78,18 @@ def test_desktop_config_update_preserves_valid_business_config(tmp_path):
     assert snapshot["config"]["message_templates"]["reminder_sms"] == (
         "Reminder from {business_name}"
     )
-    assert list(tmp_path.glob("example-dental.yaml.*.bak"))
+    assert list(tmp_path.glob("santiago.yaml.*.bak"))
 
 
 def test_desktop_config_send_appointment_email_uses_attendee_email(tmp_path, monkeypatch):
-    source = Path("config/businesses/example-dental.yaml")
-    target = tmp_path / "example-dental.yaml"
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
     target.write_text(
         source.read_text(encoding="utf-8")
         + """
 
 email:
-  from: "Acme Dental <noreply@example.com>"
+  from: "HIRA <noreply@example.com>"
   sender:
     type: "smtp"
     smtp:
@@ -153,14 +156,14 @@ email:
 
 
 def test_desktop_config_send_appointment_email_rejects_missing_attendee_email(tmp_path):
-    source = Path("config/businesses/example-dental.yaml")
-    target = tmp_path / "example-dental.yaml"
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
     target.write_text(
         source.read_text(encoding="utf-8")
         + """
 
 email:
-  from: "Acme Dental <noreply@example.com>"
+  from: "HIRA <noreply@example.com>"
   sender:
     type: "smtp"
     smtp:
@@ -194,8 +197,8 @@ email:
 
 
 def test_desktop_config_rename_appointment_updates_google_and_store(tmp_path, monkeypatch):
-    source = Path("config/businesses/example-dental.yaml")
-    target = tmp_path / "example-dental.yaml"
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
     token_file = tmp_path / "google-oauth.json"
     token_file.write_text('{"token":"abc"}', encoding="utf-8")
     target.write_text(
@@ -263,8 +266,8 @@ calendar:
 
 
 def test_desktop_config_delete_appointment_updates_google_and_store(tmp_path, monkeypatch):
-    source = Path("config/businesses/example-dental.yaml")
-    target = tmp_path / "example-dental.yaml"
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
     token_file = tmp_path / "google-oauth.json"
     token_file.write_text('{"token":"abc"}', encoding="utf-8")
     target.write_text(
@@ -325,8 +328,8 @@ calendar:
 
 
 def test_desktop_config_rename_appointment_propagates_calendar_failure(tmp_path, monkeypatch):
-    source = Path("config/businesses/example-dental.yaml")
-    target = tmp_path / "example-dental.yaml"
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
     token_file = tmp_path / "google-oauth.json"
     token_file.write_text('{"token":"abc"}', encoding="utf-8")
     target.write_text(
@@ -371,8 +374,8 @@ calendar:
 
 
 def test_desktop_config_get_email_setup_reports_gmail_oauth(tmp_path, monkeypatch):
-    source = Path("config/businesses/example-dental.yaml")
-    target = tmp_path / "example-dental.yaml"
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
     token_file = tmp_path / "gmail-oauth.json"
     token_file.write_text('{"token": "abc"}', encoding="utf-8")
     target.write_text(
@@ -380,7 +383,7 @@ def test_desktop_config_get_email_setup_reports_gmail_oauth(tmp_path, monkeypatc
         + f"""
 
 email:
-  from: "Acme Dental <noreply@example.com>"
+  from: "HIRA <noreply@example.com>"
   sender:
     type: "gmail_oauth"
     gmail_oauth:
@@ -403,7 +406,7 @@ email:
 
     assert captured == [
         {
-            "from": "Acme Dental <noreply@example.com>",
+            "from": "HIRA <noreply@example.com>",
             "sender_type": "gmail_oauth",
             "gmail_oauth_token_file": token_file.as_posix(),
             "gmail_oauth_token_set": True,
@@ -413,3 +416,4 @@ email:
             "config_error": None,
         }
     ]
+

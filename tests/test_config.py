@@ -61,32 +61,14 @@ def test_load_config_from_file(tmp_path):
     assert config.business.name == "Test Dental"
 
 
-def test_example_workers_comp_config_loads_with_resend_env(monkeypatch):
-    """Smoke test for the public workers' compensation law-firm template.
-
-    Loads the tracked `example-workers-comp.yaml`, confirms the channels
-    schema, recording, and transcripts are wired correctly, and asserts
-    the example email address and env-var name are the generic
-    placeholders rather than any real-firm identifier (regression guard
-    against re-introducing client-specific values into the public template).
-    """
-    monkeypatch.setenv("EXAMPLE_RESEND_API_KEY", "test-resend-key")
-    config = load_config(Path("config/businesses/example-workers-comp.yaml"))
-    assert config.business.name == "Example Workers' Comp Law"
-    assert config.greeting.startswith("Thank you for calling Example Workers' Comp Law")
-    assert len(config.routing) == 15
-    assert config.messages.channels[1].to == ["intake@example.com"]
-    assert config.recording is not None
-    assert config.recording.enabled is True
-    assert config.recording.consent_preamble.enabled is False
-    assert config.transcripts is not None
-    assert config.transcripts.enabled is True
-    # Generic-placeholder regression guard: no client domain in the template.
-    raw_yaml = Path("config/businesses/example-workers-comp.yaml").read_text(
-        encoding="utf-8",
-    )
-    assert "licomplaw" not in raw_yaml.lower()
-    assert "nycomplaw" not in raw_yaml.lower()
+def test_santiago_config_loads_as_only_tracked_business_config():
+    config = load_config(Path("config/businesses/santiago.yaml"))
+    assert config.mode == "production"
+    assert config.business.name == "HIRA"
+    assert config.calendar is not None
+    assert config.calendar.enabled is True
+    assert config.reminders.enabled is True
+    assert config.reminders.contacts_path == "./config/businesses/santiago-contacts.yaml"
 
 
 def test_hours_closed_day():
@@ -1043,3 +1025,4 @@ def test_config_error_handles_yaml_error_without_problem_mark():
     e = yaml.YAMLError("synthetic error with no mark")
     msg = _friendly_yaml_error(e, "anything")
     assert "synthetic error" in msg
+

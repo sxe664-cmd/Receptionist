@@ -1,0 +1,120 @@
+mode: production
+
+business:
+  name: "HIRA"
+  type: "appointment-based office"
+  timezone: "America/New_York"
+
+communications:
+  default_transfer_number: '+15551234567'
+  email_from: HIRA Front Desk <contact@hirarw.com>
+  sms_from_number: ''
+message_templates:
+  confirmation_email_subject: 'Appointment confirmed: {appointment_time}'
+  confirmation_email_text: |
+    Hi {recipient_name},
+    
+    Your appointment with {business_name} is confirmed for {appointment_time}.
+    
+    If you have any questions, feel free to call us at {default_transfer_number}.
+  confirmation_sms: '{business_name}: your appointment is confirmed for {appointment_time}. Reply STOP   to   opt   out.   Reply HELP for help.'
+  reminder_email_subject: 'Appointment reminder: {appointment_time}'
+  reminder_email_text: |
+    Hi {recipient_name},
+    
+    This is a reminder from {business_name} about your appointment on {appointment_time}.
+    
+    If you need to make changes, please call us at 561 917 1744.
+  reminder_sms: '{business_name}: reminder for your appointment on {appointment_time}. Reply STOP   to   opt   out.   Reply HELP for help.'
+  quick_sms: ''
+  quick_email: ''
+  quick_call_script: ''
+voice:
+  voice_id: "marin"
+  model: "gpt-realtime-1.5"
+
+languages:
+  primary: "en"
+  allowed: ["en", "es"]
+
+greeting: "Thank you for calling Santiago Receptionist, how can I help you today?"
+
+personality: |
+  You are a warm, professional receptionist. Be concise, confirm appointment
+  details carefully, and never book an appointment until the caller confirms
+  the exact time, phone number, and any email address they provide.
+
+hours:
+  monday:    { open: "09:00", close: "17:00" }
+  tuesday:   { open: "09:00", close: "17:00" }
+  wednesday: { open: "09:00", close: "17:00" }
+  thursday:  { open: "09:00", close: "17:00" }
+  friday:    { open: "09:00", close: "17:00" }
+  saturday:  closed
+  sunday:    closed
+
+after_hours_message: |
+  The office is currently closed. Would you like to leave a message?
+
+routing:
+  - name: "Front Desk"
+    description: "General inquiries and scheduling"
+
+faqs:
+  - question: "Can I book an appointment?"
+    answer: "Yes. I can check the calendar and help book an available appointment."
+
+messages:
+  channels:
+    - type: "email"
+      to: ["contact@hirarw.com"]
+      include_transcript: true
+      include_recording_link: true
+    - type: "file"
+      file_path: "./messages/santiago/"
+
+email:
+  from: HIRA Front Desk <contact@hirarw.com>
+  sender:
+    type: "gmail_oauth"
+    gmail_oauth:
+      oauth_token_file: "~/.aireceptionist/secrets/santiago/google-calendar-oauth.json"
+  triggers:
+    on_message: true
+    on_call_end: false
+    on_booking: true
+
+calendar:
+  enabled: true
+  calendar_id: "primary"
+  auth:
+    type: "oauth"
+    oauth_token_file: "~/.aireceptionist/secrets/santiago/google-calendar-oauth.json"
+  appointment_duration_minutes: 30
+  buffer_minutes: 15
+  buffer_placement: "after"
+  booking_window_days: 30
+  earliest_booking_hours_ahead: 2
+
+reminders:
+  enabled: true
+  offset_days: [4, 1]
+  channels: ["email"]
+  store_path: "./messages/santiago-reminders.sqlite3"
+  contacts_path: "./config/businesses/santiago-contacts.yaml"
+  lookahead_days: 60
+  allow_retroactive_send: false
+  email_provider: "configured"
+  calendar_sources:
+    - type: "google"
+      calendar_id: "primary"
+
+sms:
+  provider:
+    type: "fake"
+    log_path: "./messages/santiago-reminders-sms.log"
+
+retention:
+  recordings_days: 90
+  transcripts_days: 90
+  messages_days: 0

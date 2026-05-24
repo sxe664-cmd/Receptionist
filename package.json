@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -30,7 +30,8 @@
     "files": [
       "desktop/**/*",
       "receptionist/**/*",
-      "config/**/*",
+      "config/businesses/santiago.yaml",
+      "config/businesses/santiago-contacts.yaml",
       "scripts/**/*",
       "package.json"
     ],

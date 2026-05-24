@@ -142,7 +142,10 @@ def list_businesses(_args: argparse.Namespace) -> None:
             slug = path.stem
         except Exception:
             continue
-        businesses.append({"slug": slug, "path": _rel(path), "name": name, "mode": data.get("mode", "demo")})
+        mode = data.get("mode", "demo")
+        if mode != "production" or slug.startswith("example-"):
+            continue
+        businesses.append({"slug": slug, "path": _rel(path), "name": name, "mode": mode})
         calendar_enabled = bool(_safe_get(data, "calendar", "enabled", default=False))
         reminders_enabled = bool(_safe_get(data, "reminders", "enabled", default=False))
         businesses[-1]["calendar_enabled"] = calendar_enabled

@@ -20,11 +20,10 @@ recordings/
 .pytest_cache/
 .pytest-tmp/
 
-# Private per-business configs — only the public `example-*.yaml` templates
-# are tracked. Any other YAML in config/businesses/ is operator-local.
+# Private per-business configs are ignored by default; only explicitly tracked production configs ship.
+# Any other YAML in config/businesses/ is operator-local.
 config/businesses/*.yaml
 config/businesses/*.yaml.*.bak
-!config/businesses/example-*.yaml
 
 # Per-business calendar credentials (service-account keys, OAuth tokens, OAuth client JSON)
 secrets/*
