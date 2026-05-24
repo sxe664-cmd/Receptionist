@@ -131,6 +131,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build bundled Python runtime
+        run: npm run desktop:runtime:build
+
       - name: Publish desktop release (Windows)
         if: matrix.platform == 'windows'
         env:

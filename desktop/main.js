@@ -15,6 +15,16 @@ let updateAvailableInfo = null;
 let cachedPythonCmd = null;
 let cachedPythonArgsPrefix = [];
 
+function packagedPythonExecutable() {
+  if (!app.isPackaged) return null;
+  if (process.platform === 'win32') {
+    return path.join(process.resourcesPath, 'python-runtime', 'Scripts', 'python.exe');
+  }
+  const preferred = path.join(process.resourcesPath, 'python-runtime', 'bin', 'python3');
+  if (fs.existsSync(preferred)) return preferred;
+  return path.join(process.resourcesPath, 'python-runtime', 'bin', 'python');
+}
+
 function compareSemver(left, right) {
   const l = String(left || '').split('.').map((part) => Number.parseInt(part, 10) || 0);
   const r = String(right || '').split('.').map((part) => Number.parseInt(part, 10) || 0);
@@ -145,6 +155,10 @@ function existingWindowsPythonPaths() {
 }
 
 function pythonCandidates() {
+  if (app.isPackaged) {
+    const packaged = packagedPythonExecutable();
+    return packaged ? [{ command: packaged, prefix: [] }] : [];
+  }
   if (pythonOverride) return [{ command: pythonOverride, prefix: [] }];
   if (process.platform === 'win32') {
     const absoluteWindows = existingWindowsPythonPaths().map((candidate) => ({ command: candidate, prefix: [] }));
@@ -211,6 +225,9 @@ function isMissingPython(result) {
 async function resolvePythonCommand() {
   if (cachedPythonCmd) return cachedPythonCmd;
   const candidates = pythonCandidates();
+  if (app.isPackaged && candidates.length === 0) {
+    return null;
+  }
   for (const candidate of candidates) {
     const result = await runPythonCommand(candidate.command, candidate.prefix, ['--version']);
     if (result.code === 0) {
@@ -233,6 +250,17 @@ async function runPython(args, options = {}) {
   const candidates = cachedPythonCmd
     ? [{ command: cachedPythonCmd, prefix: cachedPythonArgsPrefix }]
     : pythonCandidates();
+  if (!candidates.length) {
+    return {
+      ok: false,
+      code: null,
+      stdout: '',
+      stderr: app.isPackaged
+        ? 'Bundled Python runtime is missing from this installation.'
+        : 'Python runtime not found.',
+      command: null,
+    };
+  }
   let lastResult = null;
   for (const candidate of candidates) {
     const result = await runPythonCommand(candidate.command, candidate.prefix, args, options);
@@ -396,7 +424,9 @@ ipcMain.handle('agent:start', async (_event, options = {}) => {
   if (agentProcess) return { ok: false, message: 'Agent is already running.' };
   const pythonCmd = await resolvePythonCommand();
   if (!pythonCmd) {
-    const message = 'Python runtime not found. Install Python 3 or set PYTHON/PYTHON_EXECUTABLE.';
+    const message = app.isPackaged
+      ? 'Bundled Python runtime not found. Reinstall the app.'
+      : 'Python runtime not found. Install Python 3 or set PYTHON/PYTHON_EXECUTABLE.';
     emitLog('agent:err', message);
     return { ok: false, message };
   }

@@ -12,6 +12,7 @@ dist/
 build/
 .venv/
 venv/
+python-runtime/
 messages/
 transcripts/
 recordings/
