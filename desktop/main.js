@@ -1,5 +1,6 @@
 ﻿const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const { Menu } = require('electron');
 const { autoUpdater } = require('electron-updater');
@@ -12,6 +13,7 @@ let updateReady = false;
 let updateState = { state: 'idle' };
 let updateAvailableInfo = null;
 let cachedPythonCmd = null;
+let cachedPythonArgsPrefix = [];
 
 function compareSemver(left, right) {
   const l = String(left || '').split('.').map((part) => Number.parseInt(part, 10) || 0);
@@ -122,15 +124,50 @@ function setupUpdaterEvents() {
   });
 }
 
-function pythonCandidates() {
-  if (pythonOverride) return [pythonOverride];
-  if (process.platform === 'win32') return ['python', 'py', 'python3'];
-  return ['python3', 'python', '/usr/bin/python3'];
+function existingWindowsPythonPaths() {
+  const roots = [process.env.LOCALAPPDATA, process.env.ProgramFiles, process.env['ProgramFiles(x86)']].filter(Boolean);
+  const found = [];
+  for (const root of roots) {
+    const base = path.join(root, 'Programs', 'Python');
+    if (!fs.existsSync(base)) continue;
+    try {
+      const entries = fs.readdirSync(base, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || !/^Python\d+/i.test(entry.name)) continue;
+        const candidate = path.join(base, entry.name, 'python.exe');
+        if (fs.existsSync(candidate)) found.push(candidate);
+      }
+    } catch (_error) {
+      // Ignore unreadable directories and continue.
+    }
+  }
+  return found;
 }
 
-function runPythonCommand(command, args, options = {}) {
+function pythonCandidates() {
+  if (pythonOverride) return [{ command: pythonOverride, prefix: [] }];
+  if (process.platform === 'win32') {
+    const absoluteWindows = existingWindowsPythonPaths().map((candidate) => ({ command: candidate, prefix: [] }));
+    return [
+      { command: 'python', prefix: [] },
+      { command: 'python3', prefix: [] },
+      ...absoluteWindows,
+      { command: 'py', prefix: ['-3'] },
+      { command: 'py', prefix: [] },
+    ];
+  }
+  return [
+    { command: 'python3', prefix: [] },
+    { command: 'python', prefix: [] },
+    { command: '/usr/bin/python3', prefix: [] },
+    { command: '/opt/homebrew/bin/python3', prefix: [] },
+    { command: '/usr/local/bin/python3', prefix: [] },
+  ];
+}
+
+function runPythonCommand(command, prefixArgs, args, options = {}) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, {
+    const child = spawn(command, [...prefixArgs, ...args], {
       cwd: projectRoot,
       env: { ...process.env, PYTHONUNBUFFERED: '1', ...(options.env || {}) },
       shell: false,
@@ -147,8 +184,22 @@ function runPythonCommand(command, args, options = {}) {
       stderr += text;
       if (options.stream) text.split(/\r?\n/).filter(Boolean).forEach((line) => emitLog(`${options.stream}:err`, line));
     });
-    child.on('error', (error) => resolve({ ok: false, code: null, stdout, stderr: String(error), command }));
-    child.on('close', (code) => resolve({ ok: code === 0, code, stdout, stderr, command }));
+    child.on('error', (error) => resolve({
+      ok: false,
+      code: null,
+      stdout,
+      stderr: String(error),
+      command,
+      prefixArgs,
+    }));
+    child.on('close', (code) => resolve({
+      ok: code === 0,
+      code,
+      stdout,
+      stderr,
+      command,
+      prefixArgs,
+    }));
   });
 }
 
@@ -161,15 +212,17 @@ async function resolvePythonCommand() {
   if (cachedPythonCmd) return cachedPythonCmd;
   const candidates = pythonCandidates();
   for (const candidate of candidates) {
-    const result = await runPythonCommand(candidate, ['--version']);
+    const result = await runPythonCommand(candidate.command, candidate.prefix, ['--version']);
     if (result.code === 0) {
-      cachedPythonCmd = candidate;
-      emitLog('python', `Using runtime: ${candidate}`);
+      cachedPythonCmd = candidate.command;
+      cachedPythonArgsPrefix = candidate.prefix;
+      emitLog('python', `Using runtime: ${candidate.command}`);
       return cachedPythonCmd;
     }
     if (!isMissingPython(result)) {
-      cachedPythonCmd = candidate;
-      emitLog('python', `Using runtime: ${candidate}`);
+      cachedPythonCmd = candidate.command;
+      cachedPythonArgsPrefix = candidate.prefix;
+      emitLog('python', `Using runtime: ${candidate.command}`);
       return cachedPythonCmd;
     }
   }
@@ -177,20 +230,24 @@ async function resolvePythonCommand() {
 }
 
 async function runPython(args, options = {}) {
-  const candidates = cachedPythonCmd ? [cachedPythonCmd] : pythonCandidates();
+  const candidates = cachedPythonCmd
+    ? [{ command: cachedPythonCmd, prefix: cachedPythonArgsPrefix }]
+    : pythonCandidates();
   let lastResult = null;
   for (const candidate of candidates) {
-    const result = await runPythonCommand(candidate, args, options);
+    const result = await runPythonCommand(candidate.command, candidate.prefix, args, options);
     lastResult = result;
     if (result.ok) {
-      cachedPythonCmd = candidate;
+      cachedPythonCmd = candidate.command;
+      cachedPythonArgsPrefix = candidate.prefix;
       return result;
     }
     if (isMissingPython(result)) continue;
-    cachedPythonCmd = candidate;
+    cachedPythonCmd = candidate.command;
+    cachedPythonArgsPrefix = candidate.prefix;
     return result;
   }
-  const attempted = candidates.join(', ');
+  const attempted = candidates.map((candidate) => candidate.command).join(', ');
   return {
     ok: false,
     code: null,
