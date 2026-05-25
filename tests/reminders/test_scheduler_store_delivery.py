@@ -256,13 +256,13 @@ async def test_custom_message_templates_are_used_for_confirmation_and_reminders(
         "Custom confirmation: {business_name} at {appointment_time}"
     )
     config.message_templates.confirmation_sms = (
-        "Custom SMS confirmation for {appointment_time}"
+        "Custom SMS confirmation for {recipient_name}"
     )
     config.message_templates.reminder_email_subject = "Reminder T-{offset_days}"
     config.message_templates.reminder_email_text = (
         "Custom reminder for {recipient_name}: {appointment_time}"
     )
-    config.message_templates.reminder_sms = "Custom SMS reminder T-{offset_days}"
+    config.message_templates.reminder_sms = "Custom SMS reminder for {recipient_name} T-{offset_days}"
     store = ReminderStore(config.reminders.store_path)
     contacts = load_contacts(config.reminders.contacts_path)
 
@@ -286,12 +286,13 @@ async def test_custom_message_templates_are_used_for_confirmation_and_reminders(
 
     email_log = (tmp_path / "email.log").read_text(encoding="utf-8")
     sms_log = (tmp_path / "sms.log").read_text(encoding="utf-8")
-    assert "Confirmed for Pat One" in email_log
+    assert "Confirmed for Cleaning" in email_log
+    assert "Custom reminder for Cleaning" in email_log
     assert "Custom confirmation: Acme Dental" in email_log
+    assert "Custom SMS confirmation for Cleaning" in sms_log
+    assert "Custom SMS reminder for Cleaning" in sms_log
     assert "Reminder T-1" in email_log
-    assert "Custom reminder for Pat One" in email_log
     assert "Custom SMS confirmation" in sms_log
-    assert "Custom SMS reminder T-1" in sms_log
 
 
 @pytest.mark.asyncio

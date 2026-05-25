@@ -103,6 +103,7 @@ class ReminderStore:
                     calendar_id TEXT NOT NULL,
                     event_id TEXT NOT NULL,
                     event_uid TEXT NOT NULL,
+                    event_summary TEXT NOT NULL DEFAULT '',
                     event_start TEXT NOT NULL,
                     event_end TEXT NOT NULL,
                     event_timezone TEXT NOT NULL,
@@ -128,6 +129,7 @@ class ReminderStore:
                 """
             )
             self._ensure_events_notes_column(conn)
+            self._ensure_jobs_event_summary_column(conn)
             conn.execute(
                 "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now_iso()),
@@ -138,6 +140,12 @@ class ReminderStore:
         if any(col["name"] == "notes" for col in cols):
             return
         conn.execute("ALTER TABLE events ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+
+    def _ensure_jobs_event_summary_column(self, conn: sqlite3.Connection) -> None:
+        cols = conn.execute("PRAGMA table_info(reminder_jobs)").fetchall()
+        if any(col["name"] == "event_summary" for col in cols):
+            return
+        conn.execute("ALTER TABLE reminder_jobs ADD COLUMN event_summary TEXT NOT NULL DEFAULT ''")
 
     def import_recipients(self, recipients: Iterable[ReminderRecipient]) -> int:
         self.init_db()
@@ -242,10 +250,11 @@ class ReminderStore:
                 """
                 INSERT INTO reminder_jobs(
                     idempotency_key, business_slug, source, calendar_id, event_id, event_uid,
-                    event_start, event_end, event_timezone, recipient_id, channel, offset_days,
+                    event_summary, event_start, event_end, event_timezone, recipient_id, channel, offset_days,
                     due_at, status, reason, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(idempotency_key) DO UPDATE SET
+                    event_summary=excluded.event_summary,
                     event_end=excluded.event_end,
                     event_timezone=excluded.event_timezone,
                     recipient_id=excluded.recipient_id,
@@ -265,6 +274,7 @@ class ReminderStore:
                     event.calendar_id,
                     event.event_id,
                     event.event_uid,
+                    event.summary,
                     event.start.isoformat(),
                     event.end.isoformat(),
                     event.timezone,
@@ -309,6 +319,14 @@ class ReminderStore:
                 """
                 UPDATE events
                 SET summary=?, updated_at=?
+                WHERE business_slug=? AND source=? AND calendar_id=? AND event_id=?
+                """,
+                (summary, utc_now_iso(), business_slug, source, calendar_id, event_id),
+            )
+            conn.execute(
+                """
+                UPDATE reminder_jobs
+                SET event_summary=?, updated_at=?
                 WHERE business_slug=? AND source=? AND calendar_id=? AND event_id=?
                 """,
                 (summary, utc_now_iso(), business_slug, source, calendar_id, event_id),
@@ -476,4 +494,5 @@ class ReminderStore:
             status=row["status"],
             reason=row["reason"],
             claimed_at=row["claimed_at"],
+            event_summary=row["event_summary"] or "Appointment",
         )

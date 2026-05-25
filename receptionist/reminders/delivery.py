@@ -144,9 +144,9 @@ class ReminderDispatcher:
         self, job: ReminderJob, event: AppointmentEvent, recipient: ReminderRecipient
     ) -> None:
         if job.offset_days == 0:
-            body = build_confirmation_sms(self.config, event)
+            body = build_confirmation_sms(self.config, event, recipient)
         else:
-            body = build_reminder_sms(self.config, event, job.offset_days)
+            body = build_reminder_sms(self.config, event, job.offset_days, recipient)
         provider = self.config.sms.provider
         if isinstance(provider, FakeSMSProviderConfig):
             await FakeLog(provider.log_path).write(
@@ -171,7 +171,7 @@ def _event_from_job(job: ReminderJob) -> AppointmentEvent:
         calendar_id=job.calendar_id,
         event_id=job.event_id,
         event_uid=job.event_uid,
-        summary="Appointment",
+        summary=job.event_summary or "Appointment",
         start=_parse_dt(job.event_start),
         end=_parse_dt(job.event_end),
         timezone=job.event_timezone,

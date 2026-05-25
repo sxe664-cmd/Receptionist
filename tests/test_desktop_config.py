@@ -81,6 +81,65 @@ def test_desktop_config_update_preserves_valid_business_config(tmp_path):
     assert list(tmp_path.glob("santiago.yaml.*.bak"))
 
 
+def test_desktop_config_update_persists_all_message_templates(tmp_path):
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
+    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+    expected_templates = {
+        "confirmation_email_subject": "Confirmed: {appointment_time}",
+        "confirmation_email_text": "Hi {recipient_name},\n\nConfirmed at {appointment_time}.",
+        "confirmation_sms": "SMS confirmed for {recipient_name}",
+        "reminder_email_subject": "Reminder from {business_name}",
+        "reminder_email_text": "Hi {recipient_name},\n\nReminder for {appointment_time}.",
+        "reminder_sms": "SMS reminder for {appointment_time}",
+        "quick_sms": "Quick SMS for {recipient_name}",
+        "quick_email": "Quick email for {business_name}\nCall {default_transfer_number}.",
+        "quick_call_script": "Call script for {recipient_name}",
+    }
+
+    args = desktop_config.build_parser().parse_args(
+        [
+            "update",
+            "--config",
+            str(target),
+            "--mode",
+            "production",
+            "--default-transfer-number",
+            "+15550001111",
+            "--email-from",
+            "HIRA <hello@example.com>",
+            "--sms-from-number",
+            "+15550002222",
+            "--confirmation-email-subject",
+            expected_templates["confirmation_email_subject"],
+            "--confirmation-email-text",
+            expected_templates["confirmation_email_text"],
+            "--confirmation-sms",
+            expected_templates["confirmation_sms"],
+            "--reminder-email-subject",
+            expected_templates["reminder_email_subject"],
+            "--reminder-email-text",
+            expected_templates["reminder_email_text"],
+            "--reminder-sms",
+            expected_templates["reminder_sms"],
+            "--quick-sms",
+            expected_templates["quick_sms"],
+            "--quick-email",
+            expected_templates["quick_email"],
+            "--quick-call-script",
+            expected_templates["quick_call_script"],
+        ]
+    )
+
+    desktop_config.update_business(args)
+
+    snapshot = desktop_config._snapshot(target)
+    assert snapshot["valid"] is True
+    assert snapshot["config"]["message_templates"] == expected_templates
+    assert list(tmp_path.glob("santiago.yaml.*.bak"))
+
+
 def test_desktop_config_send_appointment_email_uses_attendee_email(tmp_path, monkeypatch):
     source = Path("config/businesses/santiago.yaml")
     target = tmp_path / "santiago.yaml"

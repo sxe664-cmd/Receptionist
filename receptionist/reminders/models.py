@@ -62,3 +62,4 @@ class ReminderJob:
     status: ReminderStatus
     reason: str | None = None
     claimed_at: str | None = None
+    event_summary: str = "Appointment"

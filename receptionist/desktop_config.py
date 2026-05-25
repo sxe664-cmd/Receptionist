@@ -417,7 +417,8 @@ def _yaml_mapping_lines(key: str, values: dict[str, str]) -> list[str]:
     lines = [f"{key}:"]
     for name, value in values.items():
         if "\n" in value:
-            lines.append(f"  {name}: |")
+            chomping = "|" if value.endswith("\n") else "|-"
+            lines.append(f"  {name}: {chomping}")
             for line in value.splitlines():
                 lines.append(f"    {line}")
             if value.endswith("\n"):

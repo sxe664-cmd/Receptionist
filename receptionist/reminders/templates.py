@@ -20,11 +20,21 @@ def _context(
 ) -> dict[str, str | int]:
     return {
         "business_name": config.business.name,
-        "recipient_name": recipient.display_name if recipient else "",
+        "recipient_name": recipient_name_for_message(event, recipient),
         "appointment_time": format_when(event),
         "offset_days": offset_days or 0,
         "default_transfer_number": config.communications.default_transfer_number or "",
     }
+
+
+def recipient_name_for_message(
+    event: AppointmentEvent,
+    recipient: ReminderRecipient | None = None,
+) -> str:
+    title = event.summary.strip()
+    if title and title.lower() != "appointment":
+        return title
+    return recipient.display_name if recipient else ""
 
 
 def _render(template: str | None, context: dict[str, str | int]) -> str | None:
@@ -55,7 +65,7 @@ def build_reminder_email(
     ctx = _context(config, event, recipient, offset_days)
     templates = config.message_templates
     subject = _render(templates.reminder_email_subject, ctx) or f"Appointment reminder: {format_when(event)}"
-    name = recipient.display_name
+    name = recipient_name_for_message(event, recipient)
     body_text = _render(templates.reminder_email_text, ctx) or (
         f"Hi {name},\n\n"
         f"This is a reminder from {config.business.name} about your appointment "
@@ -75,8 +85,13 @@ def build_reminder_email(
     return subject, body_text, body_html
 
 
-def build_reminder_sms(config: BusinessConfig, event: AppointmentEvent, offset_days: int) -> str:
-    ctx = _context(config, event, offset_days=offset_days)
+def build_reminder_sms(
+    config: BusinessConfig,
+    event: AppointmentEvent,
+    offset_days: int,
+    recipient: ReminderRecipient | None = None,
+) -> str:
+    ctx = _context(config, event, recipient, offset_days=offset_days)
     return _render(config.message_templates.reminder_sms, ctx) or (
         f"{config.business.name}: reminder for your appointment on {format_when(event)}. "
         f"Reply STOP to opt out. Reply HELP for help."
@@ -89,7 +104,7 @@ def build_confirmation_email(
     ctx = _context(config, event, recipient)
     templates = config.message_templates
     subject = _render(templates.confirmation_email_subject, ctx) or f"Appointment confirmed: {format_when(event)}"
-    name = recipient.display_name
+    name = recipient_name_for_message(event, recipient)
     body_text = _render(templates.confirmation_email_text, ctx) or (
         f"Hi {name},\n\n"
         f"Your appointment with {config.business.name} is confirmed for "
@@ -109,8 +124,12 @@ def build_confirmation_email(
     return subject, body_text, body_html
 
 
-def build_confirmation_sms(config: BusinessConfig, event: AppointmentEvent) -> str:
-    ctx = _context(config, event)
+def build_confirmation_sms(
+    config: BusinessConfig,
+    event: AppointmentEvent,
+    recipient: ReminderRecipient | None = None,
+) -> str:
+    ctx = _context(config, event, recipient)
     return _render(config.message_templates.confirmation_sms, ctx) or (
         f"{config.business.name}: your appointment is confirmed for {format_when(event)}. "
         f"Reply STOP to opt out. Reply HELP for help."

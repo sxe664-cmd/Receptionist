@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -50,6 +50,7 @@
     ],
     "win": {
       "artifactName": "AIReceptionist-Windows-Setup.${ext}",
+      "icon": "desktop/assets/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -61,6 +62,7 @@
     },
     "mac": {
       "artifactName": "AIReceptionist-macOS.${ext}",
+      "icon": "desktop/assets/icon.icns",
       "target": [
         {
           "target": "dmg",
