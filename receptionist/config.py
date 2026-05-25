@@ -698,6 +698,7 @@ class RemindersConfig(BaseModel):
     channels: list[Literal["email", "sms"]] = Field(default_factory=lambda: ["email", "sms"])
     store_path: str = "./messages/reminders.sqlite3"
     contacts_path: str = "./config/businesses/contacts.yaml"
+    lookback_days: int = Field(default=90, ge=0, le=366)
     lookahead_days: int = Field(default=60, gt=0, le=366)
     allow_retroactive_send: bool = False
     calendar_sources: list[ReminderCalendarSource] = Field(default_factory=list)

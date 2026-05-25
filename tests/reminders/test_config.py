@@ -43,6 +43,7 @@ def test_reminders_config_allows_fake_email_without_top_level_email(tmp_path):
 
     assert config.reminders.enabled is True
     assert config.reminders.offset_days == [4, 1]
+    assert config.reminders.lookback_days == 90
     assert config.reminders.email_provider == "fake"
     assert config.sms.provider.type == "fake"
 

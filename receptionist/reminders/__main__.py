@@ -116,6 +116,7 @@ async def _load_configured_events(config, *, slug: str, current):
     have not been migrated yet.
     """
     sources = list(config.reminders.calendar_sources)
+    lookback = current - timedelta(days=config.reminders.lookback_days)
     lookahead = current + timedelta(days=config.reminders.lookahead_days)
     events = []
 
@@ -131,7 +132,7 @@ async def _load_configured_events(config, *, slug: str, current):
                         client,
                         business_slug=slug,
                         calendar_id=source.calendar_id,
-                        time_min=current,
+                        time_min=lookback,
                         time_max=lookahead,
                         timezone_name=config.business.timezone,
                     )
@@ -160,7 +161,7 @@ async def _load_configured_events(config, *, slug: str, current):
         client,
         business_slug=slug,
         calendar_id=config.calendar.calendar_id,
-        time_min=current,
+        time_min=lookback,
         time_max=lookahead,
         timezone_name=config.business.timezone,
     )

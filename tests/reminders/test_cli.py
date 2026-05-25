@@ -186,9 +186,11 @@ END:VCALENDAR
 
     monkeypatch.setattr(reminders_main, "build_credentials", lambda auth: object())
     monkeypatch.setattr(reminders_main, "GoogleCalendarClient", lambda creds, calendar_id: {"calendar_id": calendar_id})
+    google_calls = []
 
     async def fake_list_google_events(client, **kwargs):
         assert client["calendar_id"] == "google-source"
+        google_calls.append(kwargs)
         return [google_event]
 
     monkeypatch.setattr(reminders_main, "list_google_events", fake_list_google_events)
@@ -201,6 +203,8 @@ END:VCALENDAR
     out = capsys.readouterr().out
     assert "Synced events: 2" in out
     assert "Dispatched reminders: 8" in out
+    assert google_calls[0]["time_min"].isoformat() == "2026-02-19T09:00:00-04:00"
+    assert google_calls[0]["time_max"].isoformat() == "2026-07-19T09:00:00-04:00"
     assert "patient@example.com" in (tmp_path / "messages" / "email.log").read_text(encoding="utf-8")
     assert "+15551234567" in (tmp_path / "messages" / "sms.log").read_text(encoding="utf-8")
 

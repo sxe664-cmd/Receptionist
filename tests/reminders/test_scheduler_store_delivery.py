@@ -129,6 +129,44 @@ def test_list_events_filters_by_parsed_datetime_range(tmp_path):
     assert [event["start_iso"] for event in events] == ["2026-06-05T09:00:00-04:00"]
 
 
+def test_past_synced_event_is_listed_but_reminder_jobs_are_skipped(tmp_path):
+    config = _config(tmp_path)
+    store = ReminderStore(config.reminders.store_path)
+    contacts = load_contacts(config.reminders.contacts_path)
+    now = datetime(2026, 6, 5, 12, 0, tzinfo=ZoneInfo("America/New_York"))
+    event = AppointmentEvent(
+        business_slug="acme-dental",
+        source="google",
+        calendar_id="primary",
+        event_id="past-evt",
+        event_uid="past-uid",
+        summary="Yesterday Visit",
+        start=datetime.fromisoformat("2026-06-04T09:00:00-04:00"),
+        end=datetime.fromisoformat("2026-06-04T09:30:00-04:00"),
+        timezone="America/New_York",
+        attendee_emails=("pat@example.com",),
+    )
+
+    schedule_event_reminders(
+        config=config,
+        store=store,
+        event=event,
+        resolver=ContactResolver(contacts),
+        now=now,
+    )
+
+    events = store.list_events(
+        start_iso="2026-06-04T00:00:00-04:00",
+        end_iso="2026-06-05T00:00:00-04:00",
+        limit=10,
+    )
+    jobs = store.list_jobs()
+    assert [item["event_id"] for item in events] == ["past-evt"]
+    assert jobs
+    assert all(job.status == "skipped" for job in jobs)
+    assert all(job.reason == "missed_due_time" for job in jobs)
+
+
 def test_sms_without_opt_in_is_suppressed(tmp_path):
     config = _config(tmp_path)
     store = ReminderStore(config.reminders.store_path)
