@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const https = require('https');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -8,6 +9,9 @@ const rootDir = path.resolve(__dirname, '..');
 const runtimeDir = path.join(rootDir, 'python-runtime');
 const bundledBaseDirName = 'base';
 const runtimeManifestName = 'runtime-manifest.json';
+const standaloneRuntimeDir = path.join(rootDir, '.python-standalone-runtime');
+const pythonBuildStandaloneRepo = 'astral-sh/python-build-standalone';
+const macStandalonePythonMajorMinor = '3.14';
 
 function run(command, args, options = {}) {
   const pretty = `${command} ${args.join(' ')}`.trim();
@@ -34,6 +38,95 @@ function commandExists(command, args = ['--version']) {
   });
   if (result.error) return false;
   return result.status === 0;
+}
+
+function download(url, destination) {
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  return new Promise((resolve, reject) => {
+    const request = https.get(url, {
+      headers: { 'User-Agent': 'AIReceptionist-build-runtime' },
+    }, (response) => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode || 0) && response.headers.location) {
+        response.resume();
+        download(response.headers.location, destination).then(resolve, reject);
+        return;
+      }
+      if (response.statusCode !== 200) {
+        response.resume();
+        reject(new Error(`Download failed (${response.statusCode}): ${url}`));
+        return;
+      }
+      const file = fs.createWriteStream(destination);
+      response.pipe(file);
+      file.on('finish', () => file.close(resolve));
+      file.on('error', reject);
+    });
+    request.on('error', reject);
+  });
+}
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(url, {
+      headers: { 'User-Agent': 'AIReceptionist-build-runtime' },
+    }, (response) => {
+      if (response.statusCode !== 200) {
+        response.resume();
+        reject(new Error(`GitHub API request failed (${response.statusCode}): ${url}`));
+        return;
+      }
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => {
+        try {
+          resolve(JSON.parse(body));
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+    request.on('error', reject);
+  });
+}
+
+function macStandaloneTarget() {
+  if (process.arch === 'arm64') return 'aarch64-apple-darwin';
+  if (process.arch === 'x64') return 'x86_64-apple-darwin';
+  throw new Error(`Unsupported macOS architecture for standalone Python: ${process.arch}`);
+}
+
+async function resolveMacStandalonePython() {
+  const target = macStandaloneTarget();
+  const releaseOverride = process.env.PYTHON_BUILD_STANDALONE_RELEASE;
+  const releasesUrl = releaseOverride
+    ? `https://api.github.com/repos/${pythonBuildStandaloneRepo}/releases/tags/${releaseOverride}`
+    : `https://api.github.com/repos/${pythonBuildStandaloneRepo}/releases/latest`;
+  const release = await fetchJson(releasesUrl);
+  const asset = (release.assets || []).find((candidate) => {
+    const name = candidate.name || '';
+    return name.startsWith(`cpython-${macStandalonePythonMajorMinor}.`)
+      && name.includes(`-${target}-`)
+      && !name.includes('-freethreaded-')
+      && name.endsWith('-install_only_stripped.tar.gz');
+  });
+  if (!asset?.browser_download_url) {
+    throw new Error(`No Python ${macStandalonePythonMajorMinor} standalone asset found for ${target} in ${release.tag_name || releasesUrl}`);
+  }
+
+  fs.rmSync(standaloneRuntimeDir, { recursive: true, force: true });
+  fs.mkdirSync(standaloneRuntimeDir, { recursive: true });
+  const archivePath = path.join(standaloneRuntimeDir, asset.name);
+  process.stdout.write(`\n[python-runtime] Downloading ${asset.name}\n`);
+  await download(asset.browser_download_url, archivePath);
+  run('tar', ['-xzf', archivePath, '-C', standaloneRuntimeDir]);
+
+  const installDir = path.join(standaloneRuntimeDir, 'python', 'install');
+  const executable = path.join(installDir, 'bin', 'python3');
+  if (!fs.existsSync(executable)) {
+    throw new Error(`Standalone Python executable missing at ${executable}`);
+  }
+  return { command: executable, prefix: [] };
 }
 
 function resolveHostPython() {
@@ -166,8 +259,10 @@ function bundleBasePython(pythonExe) {
   rewritePyvenvConfig({ baseExecutable: bundledBaseExecutable, venvExecutable: pythonExe });
 }
 
-function buildRuntime() {
-  const hostPython = resolveHostPython();
+async function buildRuntime() {
+  const hostPython = process.platform === 'darwin'
+    ? await resolveMacStandalonePython()
+    : resolveHostPython();
   if (!hostPython) {
     throw new Error('No host Python found. Set PYTHON or install Python 3 on the build machine.');
   }
@@ -192,7 +287,10 @@ function buildRuntime() {
 }
 
 try {
-  buildRuntime();
+  buildRuntime().catch((error) => {
+    process.stderr.write(`\n[python-runtime] ERROR: ${error.message}\n`);
+    process.exit(1);
+  });
 } catch (error) {
   process.stderr.write(`\n[python-runtime] ERROR: ${error.message}\n`);
   process.exit(1);
