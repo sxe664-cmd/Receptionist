@@ -40,11 +40,18 @@ function commandExists(command, args = ['--version']) {
   return result.status === 0;
 }
 
+function requestHeaders() {
+  const headers = { 'User-Agent': 'AIReceptionist-build-runtime' };
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
 function download(url, destination) {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   return new Promise((resolve, reject) => {
     const request = https.get(url, {
-      headers: { 'User-Agent': 'AIReceptionist-build-runtime' },
+      headers: requestHeaders(),
     }, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode || 0) && response.headers.location) {
         response.resume();
@@ -68,7 +75,7 @@ function download(url, destination) {
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
     const request = https.get(url, {
-      headers: { 'User-Agent': 'AIReceptionist-build-runtime' },
+      headers: requestHeaders(),
     }, (response) => {
       if (response.statusCode !== 200) {
         response.resume();
@@ -257,6 +264,7 @@ function bundleBasePython(pythonExe) {
     throw new Error(`Copied base Python executable missing. Checked: ${bundledExecutableCandidates(basePrefix, bundledBaseDir, baseExecutable).join(', ')}`);
   }
   rewritePyvenvConfig({ baseExecutable: bundledBaseExecutable, venvExecutable: pythonExe });
+  return bundledBaseExecutable;
 }
 
 async function buildRuntime() {
@@ -279,7 +287,10 @@ async function buildRuntime() {
   run(pythonExe, ['-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel']);
   run(pythonExe, ['-m', 'pip', 'install', '.']);
 
-  bundleBasePython(pythonExe);
+  const bundledBaseExecutable = bundleBasePython(pythonExe);
+
+  // Catches packaged base Python binaries that still reference host-only paths.
+  run(bundledBaseExecutable, ['-c', 'import sys; print("base-runtime-ok")']);
 
   // Minimal sanity import set used by desktop flows.
   run(pythonExe, ['-c', 'import yaml, dotenv, google_auth_oauthlib; print("runtime-ok")']);

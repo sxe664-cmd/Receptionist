@@ -132,6 +132,8 @@ jobs:
         run: npm ci
 
       - name: Build bundled Python runtime
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run desktop:runtime:build
 
       - name: Publish desktop release (Windows)
