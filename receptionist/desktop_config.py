@@ -27,7 +27,9 @@ from receptionist.reminders.models import AppointmentEvent
 from receptionist.reminders.store import ReminderStore
 from receptionist.reminders.service import send_appointment_email as send_manual_appointment_email
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(
+    os.environ.get("RECEPTIONIST_DESKTOP_ROOT") or Path(__file__).resolve().parents[1]
+).expanduser().resolve()
 BUSINESS_DIR = PROJECT_ROOT / "config" / "businesses"
 ENV_LOCAL_PATH = PROJECT_ROOT / ".env.local"
 

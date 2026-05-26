@@ -1,9 +1,110 @@
+import importlib
 from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
 
 from receptionist import desktop_config
+
+
+def _minimal_business_yaml() -> str:
+    return """
+mode: production
+business:
+  name: HIRA
+  type: clinic
+  timezone: America/New_York
+greeting: Hello
+personality: Helpful
+hours:
+  monday: {open: "09:00", close: "17:00"}
+after_hours_message: Closed
+routing:
+  - name: Front Desk
+    description: General inquiries
+faqs: []
+messages:
+  channels:
+    - type: file
+      file_path: "./messages"
+"""
+
+
+def test_desktop_config_uses_desktop_root_env_for_business_listing(monkeypatch, tmp_path):
+    workspace = tmp_path / "runtime-workspace"
+    business_dir = workspace / "config" / "businesses"
+    business_dir.mkdir(parents=True)
+    (business_dir / "santiago.yaml").write_text(
+        "mode: production\nbusiness:\n  name: HIRA\n", encoding="utf-8"
+    )
+
+    monkeypatch.setenv("RECEPTIONIST_DESKTOP_ROOT", str(workspace))
+    reloaded = importlib.reload(desktop_config)
+    try:
+        captured = []
+        monkeypatch.setattr(reloaded, "_print_json", captured.append)
+
+        reloaded.list_businesses(None)
+
+        assert reloaded.PROJECT_ROOT == workspace.resolve()
+        assert captured == [
+            {
+                "businesses": [
+                    {
+                        "slug": "santiago",
+                        "path": "config/businesses/santiago.yaml",
+                        "name": "HIRA",
+                        "mode": "production",
+                        "calendar_enabled": False,
+                        "reminders_enabled": False,
+                    }
+                ]
+            }
+        ]
+    finally:
+        monkeypatch.delenv("RECEPTIONIST_DESKTOP_ROOT", raising=False)
+        importlib.reload(desktop_config)
+
+
+def test_desktop_config_update_relative_path_writes_workspace_copy(monkeypatch, tmp_path):
+    workspace = tmp_path / "runtime-workspace"
+    business_dir = workspace / "config" / "businesses"
+    business_dir.mkdir(parents=True)
+    workspace_config = business_dir / "santiago.yaml"
+    workspace_config.write_text(_minimal_business_yaml(), encoding="utf-8")
+
+    monkeypatch.setenv("RECEPTIONIST_DESKTOP_ROOT", str(workspace))
+    reloaded = importlib.reload(desktop_config)
+    try:
+        args = reloaded.build_parser().parse_args(
+            [
+                "update",
+                "--config",
+                "config/businesses/santiago.yaml",
+                "--mode",
+                "production",
+                "--default-transfer-number",
+                "+15550001111",
+                "--email-from",
+                "HIRA <hello@example.com>",
+                "--sms-from-number",
+                "",
+                "--confirmation-sms",
+                "Confirmed for {appointment_time}",
+                "--reminder-sms",
+                "Reminder from {business_name}",
+            ]
+        )
+
+        reloaded.update_business(args)
+
+        updated = workspace_config.read_text(encoding="utf-8")
+        assert "default_transfer_number: '+15550001111'" in updated
+        assert "confirmation_sms: Confirmed for {appointment_time}" in updated
+        assert list(business_dir.glob("santiago.yaml.*.bak"))
+    finally:
+        monkeypatch.delenv("RECEPTIONIST_DESKTOP_ROOT", raising=False)
+        importlib.reload(desktop_config)
 
 
 def test_desktop_config_lists_business_files_only(monkeypatch, tmp_path):

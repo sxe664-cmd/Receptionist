@@ -16,6 +16,32 @@ let cachedPythonCmd = null;
 let cachedPythonArgsPrefix = [];
 let cachedPackagedPythonEnv = null;
 
+function desktopWorkspaceRoot() {
+  return app.isPackaged
+    ? path.join(app.getPath('userData'), 'runtime-workspace')
+    : projectRoot;
+}
+
+function workspacePath(...parts) {
+  return path.join(desktopWorkspaceRoot(), ...parts);
+}
+
+function seedWorkspaceFile(relativePath) {
+  if (!app.isPackaged) return;
+  const source = path.join(projectRoot, relativePath);
+  const target = workspacePath(relativePath);
+  if (!fs.existsSync(source) || fs.existsSync(target)) return;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(source, target);
+}
+
+function ensureDesktopWorkspace() {
+  if (!app.isPackaged) return;
+  fs.mkdirSync(workspacePath('config', 'businesses'), { recursive: true });
+  seedWorkspaceFile(path.join('config', 'businesses', 'santiago.yaml'));
+  seedWorkspaceFile(path.join('config', 'businesses', 'santiago-contacts.yaml'));
+}
+
 function bundledRuntimeDir() {
   return path.join(process.resourcesPath, 'python-runtime');
 }
@@ -68,6 +94,16 @@ function packagedPythonEnv() {
     ].filter(Boolean).join(path.delimiter),
   };
   return cachedPackagedPythonEnv;
+}
+
+function pythonEnv(overrides = {}) {
+  return {
+    ...process.env,
+    PYTHONUNBUFFERED: '1',
+    RECEPTIONIST_DESKTOP_ROOT: desktopWorkspaceRoot(),
+    ...packagedPythonEnv(),
+    ...overrides,
+  };
 }
 
 function rewriteBundledPyvenvConfig(runtimeDir, manifest) {
@@ -280,9 +316,10 @@ function pythonCandidates() {
 
 function runPythonCommand(command, prefixArgs, args, options = {}) {
   return new Promise((resolve) => {
+    ensureDesktopWorkspace();
     const child = spawn(command, [...prefixArgs, ...args], {
-      cwd: projectRoot,
-      env: { ...process.env, PYTHONUNBUFFERED: '1', ...packagedPythonEnv(), ...(options.env || {}) },
+      cwd: desktopWorkspaceRoot(),
+      env: pythonEnv(options.env || {}),
       shell: false,
     });
     let stdout = '';
@@ -504,19 +541,19 @@ ipcMain.handle('update:download', async () => {
 
 ipcMain.handle('config:openExternal', async (_event, configPath) => {
   const { shell } = require('electron');
-  await shell.openPath(path.resolve(projectRoot, configPath));
+  await shell.openPath(path.resolve(desktopWorkspaceRoot(), configPath));
   return { ok: true };
 });
 
 ipcMain.handle('dialog:chooseConfig', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Choose business YAML',
-    defaultPath: path.join(projectRoot, 'config', 'businesses'),
+    defaultPath: workspacePath('config', 'businesses'),
     filters: [{ name: 'YAML', extensions: ['yaml', 'yml'] }],
     properties: ['openFile'],
   });
   if (result.canceled || !result.filePaths.length) return null;
-  return path.relative(projectRoot, result.filePaths[0]);
+  return path.relative(desktopWorkspaceRoot(), result.filePaths[0]);
 });
 
 ipcMain.handle('agent:start', async (_event, options = {}) => {
@@ -529,10 +566,11 @@ ipcMain.handle('agent:start', async (_event, options = {}) => {
     emitLog('agent:err', message);
     return { ok: false, message };
   }
-  const env = { ...process.env, PYTHONUNBUFFERED: '1', ...packagedPythonEnv() };
+  ensureDesktopWorkspace();
+  const env = pythonEnv();
   if (options.playgroundMode) env.RECEPTIONIST_AGENT_NAME = '';
   agentProcess = spawn(pythonCmd, ['-m', 'receptionist.agent', 'dev'], {
-    cwd: projectRoot,
+    cwd: desktopWorkspaceRoot(),
     env,
     shell: false,
   });
@@ -613,6 +651,7 @@ ipcMain.handle('reminders:run', async (_event, payload) => {
 });
 
 app.whenReady().then(() => {
+  ensureDesktopWorkspace();
   createWindow();
   setupUpdaterEvents();
 });
