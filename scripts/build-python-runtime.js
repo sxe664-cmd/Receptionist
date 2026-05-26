@@ -128,10 +128,14 @@ async function resolveMacStandalonePython() {
   await download(asset.browser_download_url, archivePath);
   run('tar', ['-xzf', archivePath, '-C', standaloneRuntimeDir]);
 
-  const installDir = path.join(standaloneRuntimeDir, 'python', 'install');
-  const executable = path.join(installDir, 'bin', 'python3');
-  if (!fs.existsSync(executable)) {
-    throw new Error(`Standalone Python executable missing at ${executable}`);
+  const executableCandidates = [
+    path.join(standaloneRuntimeDir, 'python', 'install', 'bin', 'python3'),
+    path.join(standaloneRuntimeDir, 'python', 'bin', 'python3'),
+    path.join(standaloneRuntimeDir, 'python', 'bin', 'python'),
+  ];
+  const executable = executableCandidates.find((candidate) => fs.existsSync(candidate));
+  if (!executable) {
+    throw new Error(`Standalone Python executable missing. Checked: ${executableCandidates.join(', ')}`);
   }
   return { command: executable, prefix: [] };
 }
