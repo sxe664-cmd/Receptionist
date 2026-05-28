@@ -145,7 +145,7 @@ def list_businesses(_args: argparse.Namespace) -> None:
         except Exception:
             continue
         mode = data.get("mode", "demo")
-        if mode != "production" or slug.startswith("example-"):
+        if slug.startswith("example-"):
             continue
         businesses.append({"slug": slug, "path": _rel(path), "name": name, "mode": mode})
         calendar_enabled = bool(_safe_get(data, "calendar", "enabled", default=False))

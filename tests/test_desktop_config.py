@@ -140,6 +140,36 @@ def test_desktop_config_lists_business_files_only(monkeypatch, tmp_path):
     ]
 
 
+def test_desktop_config_lists_demo_mode_businesses(monkeypatch, tmp_path):
+    business_dir = tmp_path / "config" / "businesses"
+    business_dir.mkdir(parents=True)
+    (business_dir / "clinic.yaml").write_text(
+        "mode: demo\nbusiness:\n  name: HIRA Demo\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(desktop_config, "BUSINESS_DIR", business_dir)
+    monkeypatch.setattr(desktop_config, "PROJECT_ROOT", tmp_path)
+
+    captured = []
+    monkeypatch.setattr(desktop_config, "_print_json", captured.append)
+
+    desktop_config.list_businesses(None)
+
+    assert captured == [
+        {
+            "businesses": [
+                {
+                    "slug": "clinic",
+                    "path": "config/businesses/clinic.yaml",
+                    "name": "HIRA Demo",
+                    "mode": "demo",
+                    "calendar_enabled": False,
+                    "reminders_enabled": False,
+                }
+            ]
+        }
+    ]
+
+
 def test_desktop_config_update_preserves_valid_business_config(tmp_path):
     source = Path("config/businesses/santiago.yaml")
     target = tmp_path / "santiago.yaml"

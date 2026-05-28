@@ -310,6 +310,10 @@ function renderBusiness(data) {
   const cfg = data.config || {};
   const comms = cfg.communications || {};
   const templates = cfg.message_templates || {};
+  const mode = cfg.mode === 'production' ? 'production' : 'demo';
+  document.querySelectorAll('input[name="mode"]').forEach((input) => {
+    input.checked = input.value === mode;
+  });
 
   $('defaultTransferNumber').value = comms.default_transfer_number || '';
   $('emailFrom').value = comms.email_from || '';
