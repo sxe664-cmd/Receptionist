@@ -57,6 +57,18 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def _normalize_business_mode(path: Path) -> None:
+    try:
+        data = _read_yaml(path)
+    except Exception:
+        return
+    if data.get("mode") == "production":
+        return
+    text = path.read_text(encoding="utf-8")
+    text = _set_top_level_scalar(text, "mode", "production")
+    path.write_text(text, encoding="utf-8")
+
+
 def _safe_get(data: dict[str, Any], *keys: str, default: Any = None) -> Any:
     current: Any = data
     for key in keys:
@@ -67,6 +79,7 @@ def _safe_get(data: dict[str, Any], *keys: str, default: Any = None) -> Any:
 
 
 def _snapshot(path: Path) -> dict[str, Any]:
+    _normalize_business_mode(path)
     data = _read_yaml(path)
     valid = True
     error = None
@@ -96,7 +109,7 @@ def _snapshot(path: Path) -> dict[str, Any]:
         "valid": valid,
         "error": error,
         "config": {
-            "mode": data.get("mode", "demo"),
+            "mode": "production",
             "business_name": _safe_get(data, "business", "name", default=path.stem),
             "communications": data.get("communications", {}) or {},
             "message_templates": data.get("message_templates", {}) or {},
@@ -137,6 +150,7 @@ def list_businesses(_args: argparse.Namespace) -> None:
     businesses = []
     for path in sorted([*BUSINESS_DIR.glob("*.yaml"), *BUSINESS_DIR.glob("*.yml")]):
         try:
+            _normalize_business_mode(path)
             data = _read_yaml(path)
             if not isinstance(data.get("business"), dict):
                 continue
@@ -144,8 +158,10 @@ def list_businesses(_args: argparse.Namespace) -> None:
             slug = path.stem
         except Exception:
             continue
-        mode = data.get("mode", "demo")
+        mode = data.get("mode", "production")
         if slug.startswith("example-"):
+            continue
+        if mode != "production":
             continue
         businesses.append({"slug": slug, "path": _rel(path), "name": name, "mode": mode})
         calendar_enabled = bool(_safe_get(data, "calendar", "enabled", default=False))
@@ -465,10 +481,12 @@ def _set_mapping_block(text: str, key: str, values: dict[str, str]) -> str:
 
 def update_business(args: argparse.Namespace) -> None:
     path = _to_project_path(args.config)
+    _normalize_business_mode(path)
     original = path.read_text(encoding="utf-8")
     text = original
-    if args.mode is not None:
-        text = _set_top_level_scalar(text, "mode", args.mode)
+    if args.mode not in (None, "production"):
+        raise ValueError("desktop only supports production mode")
+    text = _set_top_level_scalar(text, "mode", "production")
     comms = {
         "default_transfer_number": args.default_transfer_number or "",
         "email_from": args.email_from or "",

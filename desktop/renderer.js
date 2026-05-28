@@ -291,7 +291,6 @@ function businessPriority(business) {
   const name = String(business?.name || '').toLowerCase();
   let score = 0;
   if (slug === 'santiago' || name === 'hira') score += 1000;
-  if (business?.mode === 'production') score += 200;
   if (!slug.startsWith('example-') && !name.startsWith('example ') && !name.includes('acme')) score += 100;
   if (business?.calendar_enabled && business?.reminders_enabled) score += 50;
   else if (business?.calendar_enabled) score += 30;
@@ -310,10 +309,6 @@ function renderBusiness(data) {
   const cfg = data.config || {};
   const comms = cfg.communications || {};
   const templates = cfg.message_templates || {};
-  const mode = cfg.mode === 'production' ? 'production' : 'demo';
-  document.querySelectorAll('input[name="mode"]').forEach((input) => {
-    input.checked = input.value === mode;
-  });
 
   $('defaultTransferNumber').value = comms.default_transfer_number || '';
   $('emailFrom').value = comms.email_from || '';
@@ -500,7 +495,7 @@ async function saveSettings(event) {
   try {
     const data = await window.receptionist.updateBusiness({
       configPath: state.selectedConfig,
-      mode: document.querySelector('input[name="mode"]:checked')?.value || 'demo',
+      mode: 'production',
       defaultTransferNumber: $('defaultTransferNumber').value.trim(),
       emailFrom: $('emailFrom').value.trim(),
       smsFromNumber: $('smsFromNumber').value.trim(),

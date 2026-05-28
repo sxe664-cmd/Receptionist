@@ -35,11 +35,28 @@ function seedWorkspaceFile(relativePath) {
   fs.copyFileSync(source, target);
 }
 
+function enforceProductionModeAtPath(targetPath) {
+  if (!fs.existsSync(targetPath)) return;
+  try {
+    const text = fs.readFileSync(targetPath, 'utf8');
+    const modePattern = /^(?<prefix>\s*mode\s*:\s*).*$/m;
+    const next = modePattern.test(text)
+      ? text.replace(modePattern, '$<prefix>production')
+      : `mode: production\n${text}`;
+    if (next !== text) {
+      fs.writeFileSync(targetPath, next, 'utf8');
+    }
+  } catch (error) {
+    emitLog('python:err', `Failed to normalize business mode at ${targetPath}: ${error.message}`);
+  }
+}
+
 function ensureDesktopWorkspace() {
   if (!app.isPackaged) return;
   fs.mkdirSync(workspacePath('config', 'businesses'), { recursive: true });
   seedWorkspaceFile(path.join('config', 'businesses', 'santiago.yaml'));
   seedWorkspaceFile(path.join('config', 'businesses', 'santiago-contacts.yaml'));
+  enforceProductionModeAtPath(workspacePath('config', 'businesses', 'santiago.yaml'));
 }
 
 function bundledRuntimeDir() {
@@ -67,6 +84,19 @@ function packagedBasePythonExecutable(manifest = packagedRuntimeManifest()) {
   if (!manifest) return null;
   const candidate = path.join(bundledRuntimeDir(), manifest.baseDir || 'base', manifest.baseExecutable || '');
   return fs.existsSync(candidate) ? candidate : null;
+}
+
+function packagedVenvPythonExecutable() {
+  if (!app.isPackaged) return null;
+  const runtimeDir = bundledRuntimeDir();
+  if (process.platform === 'win32') {
+    const candidate = path.join(runtimeDir, 'Scripts', 'python.exe');
+    return fs.existsSync(candidate) ? candidate : null;
+  }
+  const py3 = path.join(runtimeDir, 'bin', 'python3');
+  if (fs.existsSync(py3)) return py3;
+  const py = path.join(runtimeDir, 'bin', 'python');
+  return fs.existsSync(py) ? py : null;
 }
 
 function findPackagedSitePackages(runtimeDir) {
@@ -148,16 +178,12 @@ function ensurePackagedPythonRuntime() {
 
 function packagedPythonExecutable() {
   if (!app.isPackaged) return null;
+  ensurePackagedPythonRuntime();
+  const venvPython = packagedVenvPythonExecutable();
+  if (venvPython) return venvPython;
   const basePython = packagedBasePythonExecutable();
   if (basePython) return basePython;
-  ensurePackagedPythonRuntime();
-  const runtimeDir = bundledRuntimeDir();
-  if (process.platform === 'win32') {
-    return path.join(runtimeDir, 'Scripts', 'python.exe');
-  }
-  const preferred = path.join(runtimeDir, 'bin', 'python3');
-  if (fs.existsSync(preferred)) return preferred;
-  return path.join(runtimeDir, 'bin', 'python');
+  return null;
 }
 
 function compareSemver(left, right) {

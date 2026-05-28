@@ -175,6 +175,18 @@ function capture(command, args) {
   return String(result.stdout || '').trim();
 }
 
+function verifyNoHomebrewLinkage(binaryPath) {
+  if (process.platform !== 'darwin') return;
+  const output = capture('otool', ['-L', binaryPath]);
+  const forbidden = ['/opt/homebrew/Cellar/', '/usr/local/Cellar/'];
+  const hit = forbidden.find((needle) => output.includes(needle));
+  if (hit) {
+    throw new Error(
+      `Bundled Python binary has forbidden host linkage (${hit}). Refusing to package non-portable runtime.`,
+    );
+  }
+}
+
 function normalizeForConfig(value) {
   return value.replace(/\\/g, '\\');
 }
@@ -292,6 +304,7 @@ async function buildRuntime() {
   run(pythonExe, ['-m', 'pip', 'install', '.']);
 
   const bundledBaseExecutable = bundleBasePython(pythonExe);
+  verifyNoHomebrewLinkage(bundledBaseExecutable);
 
   // Catches packaged base Python binaries that still reference host-only paths.
   run(bundledBaseExecutable, ['-c', 'import sys; print("base-runtime-ok")']);

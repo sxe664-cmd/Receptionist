@@ -140,11 +140,11 @@ def test_desktop_config_lists_business_files_only(monkeypatch, tmp_path):
     ]
 
 
-def test_desktop_config_lists_demo_mode_businesses(monkeypatch, tmp_path):
+def test_desktop_config_list_normalizes_demo_mode_to_production(monkeypatch, tmp_path):
     business_dir = tmp_path / "config" / "businesses"
     business_dir.mkdir(parents=True)
     (business_dir / "clinic.yaml").write_text(
-        "mode: demo\nbusiness:\n  name: HIRA Demo\n", encoding="utf-8"
+        "mode: demo\nbusiness:\n  name: HIRA\n", encoding="utf-8"
     )
     monkeypatch.setattr(desktop_config, "BUSINESS_DIR", business_dir)
     monkeypatch.setattr(desktop_config, "PROJECT_ROOT", tmp_path)
@@ -160,14 +160,33 @@ def test_desktop_config_lists_demo_mode_businesses(monkeypatch, tmp_path):
                 {
                     "slug": "clinic",
                     "path": "config/businesses/clinic.yaml",
-                    "name": "HIRA Demo",
-                    "mode": "demo",
+                    "name": "HIRA",
+                    "mode": "production",
                     "calendar_enabled": False,
                     "reminders_enabled": False,
                 }
             ]
         }
     ]
+    assert "mode: production" in (business_dir / "clinic.yaml").read_text(encoding="utf-8")
+
+
+def test_desktop_config_update_rejects_non_production_mode(tmp_path):
+    source = Path("config/businesses/santiago.yaml")
+    target = tmp_path / "santiago.yaml"
+    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+    args = desktop_config.build_parser().parse_args(
+        [
+            "update",
+            "--config",
+            str(target),
+            "--mode",
+            "demo",
+        ]
+    )
+    with pytest.raises(ValueError, match="production mode"):
+        desktop_config.update_business(args)
 
 
 def test_desktop_config_update_preserves_valid_business_config(tmp_path):
@@ -181,11 +200,11 @@ def test_desktop_config_update_preserves_valid_business_config(tmp_path):
             "--config",
             str(target),
             "--mode",
-            "demo",
+            "production",
             "--default-transfer-number",
             "+15550001111",
             "--email-from",
-            "HIRA Demo <demo@example.com>",
+            "HIRA <hello@example.com>",
             "--sms-from-number",
             "+15550002222",
             "--confirmation-sms",
@@ -200,7 +219,7 @@ def test_desktop_config_update_preserves_valid_business_config(tmp_path):
     assert snapshot["valid"] is True
     assert snapshot["config"]["communications"] == {
         "default_transfer_number": "+15550001111",
-        "email_from": "HIRA Demo <demo@example.com>",
+        "email_from": "HIRA <hello@example.com>",
         "sms_from_number": "+15550002222",
     }
     assert snapshot["config"]["message_templates"]["confirmation_sms"] == (
