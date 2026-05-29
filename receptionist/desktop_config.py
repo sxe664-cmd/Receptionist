@@ -503,6 +503,15 @@ def update_business(args: argparse.Namespace) -> None:
         "quick_sms": args.quick_sms or "",
         "quick_email": args.quick_email or "",
         "quick_call_script": args.quick_call_script or "",
+        "message_email_subject": args.message_email_subject or "",
+        "message_email_text": args.message_email_text or "",
+        "message_email_html": args.message_email_html or "",
+        "call_end_email_subject": args.call_end_email_subject or "",
+        "call_end_email_text": args.call_end_email_text or "",
+        "call_end_email_html": args.call_end_email_html or "",
+        "booking_email_subject": args.booking_email_subject or "",
+        "booking_email_text": args.booking_email_text or "",
+        "booking_email_html": args.booking_email_html or "",
     }
     text = _set_mapping_block(text, "message_templates", template_values)
 
@@ -586,6 +595,15 @@ def build_parser() -> argparse.ArgumentParser:
     update_parser.add_argument("--quick-sms", default="")
     update_parser.add_argument("--quick-email", default="")
     update_parser.add_argument("--quick-call-script", default="")
+    update_parser.add_argument("--message-email-subject", default="")
+    update_parser.add_argument("--message-email-text", default="")
+    update_parser.add_argument("--message-email-html", default="")
+    update_parser.add_argument("--call-end-email-subject", default="")
+    update_parser.add_argument("--call-end-email-text", default="")
+    update_parser.add_argument("--call-end-email-html", default="")
+    update_parser.add_argument("--booking-email-subject", default="")
+    update_parser.add_argument("--booking-email-text", default="")
+    update_parser.add_argument("--booking-email-html", default="")
     update_parser.set_defaults(func=update_business)
     return parser
 

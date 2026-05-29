@@ -322,6 +322,15 @@ function renderBusiness(data) {
   $('quickSmsTemplate').value = templates.quick_sms || '';
   $('quickEmailTemplate').value = templates.quick_email || '';
   $('quickCallScript').value = templates.quick_call_script || '';
+  $('messageEmailSubject').value = templates.message_email_subject || '';
+  $('messageEmailText').value = templates.message_email_text || '';
+  $('messageEmailHtml').value = templates.message_email_html || '';
+  $('callEndEmailSubject').value = templates.call_end_email_subject || '';
+  $('callEndEmailText').value = templates.call_end_email_text || '';
+  $('callEndEmailHtml').value = templates.call_end_email_html || '';
+  $('bookingEmailSubject').value = templates.booking_email_subject || '';
+  $('bookingEmailText').value = templates.booking_email_text || '';
+  $('bookingEmailHtml').value = templates.booking_email_html || '';
 }
 
 function escapeHtml(value) {
@@ -508,6 +517,15 @@ async function saveSettings(event) {
       quickSms: $('quickSmsTemplate').value.trim(),
       quickEmail: $('quickEmailTemplate').value.trim(),
       quickCallScript: $('quickCallScript').value.trim(),
+      messageEmailSubject: $('messageEmailSubject').value.trim(),
+      messageEmailText: $('messageEmailText').value.trim(),
+      messageEmailHtml: $('messageEmailHtml').value.trim(),
+      callEndEmailSubject: $('callEndEmailSubject').value.trim(),
+      callEndEmailText: $('callEndEmailText').value.trim(),
+      callEndEmailHtml: $('callEndEmailHtml').value.trim(),
+      bookingEmailSubject: $('bookingEmailSubject').value.trim(),
+      bookingEmailText: $('bookingEmailText').value.trim(),
+      bookingEmailHtml: $('bookingEmailHtml').value.trim(),
     });
     renderBusiness(data);
     showToast('Saved and validated business config.');

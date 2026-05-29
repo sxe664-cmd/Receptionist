@@ -539,6 +539,7 @@ class Receptionist(Agent):
             channels=self.config.messages.channels,
             business_name=self.config.business.name,
             email_config=self.config.email,
+            business_config=self.config,
         )
         # Dict-backed routing lookup. transfer_call uses case-insensitive
         # exact match on the department name, so a dict is a clean fit.

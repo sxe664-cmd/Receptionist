@@ -1,6 +1,9 @@
 # tests/email/test_templates.py
 from __future__ import annotations
 
+import pytest
+
+from receptionist.config import MessageTemplatesConfig
 from receptionist.email.templates import build_message_email, build_call_end_email
 from receptionist.messaging.models import Message, DispatchContext
 from receptionist.transcript.metadata import CallMetadata
@@ -341,3 +344,68 @@ def test_call_end_email_omits_recording_link_when_include_recording_link_false()
 
     assert "example.com/r/123.mp3" not in body_text
     assert "example.com/r/123.mp3" not in body_html
+
+
+def test_message_email_uses_configured_templates_when_present():
+    templates = MessageTemplatesConfig(
+        message_email_subject="Subj {caller_name} {business_name}",
+        message_email_text="Text {message_text} {default_transfer_number}",
+        message_email_html="<p>{caller_name}</p>",
+    )
+    subject, body_text, body_html = build_message_email(
+        _message(),
+        DispatchContext(),
+        templates=templates,
+        default_transfer_number="+15550001111",
+    )
+    assert subject == "Subj Jane Doe Acme Dental"
+    assert "Please call me back about my appointment." in body_text
+    assert "+15550001111" in body_text
+    assert body_html == "<p>Jane Doe</p>"
+
+
+def test_call_end_email_uses_configured_templates_when_present():
+    templates = MessageTemplatesConfig(
+        call_end_email_subject="Outcome {outcomes}",
+        call_end_email_text="Call {caller_phone} {duration}",
+        call_end_email_html="<p>{caller_phone}</p>",
+    )
+    subject, body_text, body_html = build_call_end_email(
+        _metadata(),
+        DispatchContext(),
+        templates=templates,
+    )
+    assert "Outcome" in subject
+    assert "+15551112222" in body_text
+    assert body_html == "<p>+15551112222</p>"
+
+
+def test_booking_email_uses_configured_templates_when_present():
+    from receptionist.email.templates import build_booking_email
+
+    md = CallMetadata(
+        call_id="r",
+        business_name="Acme",
+        caller_phone="+15551112222",
+        appointment_booked=True,
+        appointment_details={
+            "event_id": "evt1",
+            "start_iso": "2026-04-28T14:00:00-04:00",
+            "end_iso": "2026-04-28T14:30:00-04:00",
+            "html_link": "https://calendar.google.com/event?eid=abc",
+        },
+    )
+    templates = MessageTemplatesConfig(
+        booking_email_subject="Booked {appointment_start}",
+        booking_email_text="Body {caller_phone}",
+        booking_email_html="<p>{appointment_link}</p>",
+    )
+    subject, body_text, body_html = build_booking_email(md, DispatchContext(), templates=templates)
+    assert subject == "Booked 2026-04-28T14:00:00-04:00"
+    assert body_text == "Body +15551112222"
+    assert body_html == "<p>https://calendar.google.com/event?eid=abc</p>"
+
+
+def test_notification_template_unknown_placeholder_raises():
+    with pytest.raises(ValueError, match="unknown_token"):
+        MessageTemplatesConfig(message_email_subject="Bad {unknown_token}")

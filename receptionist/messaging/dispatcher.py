@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Sequence
 
 from receptionist.config import (
+    BusinessConfig,
     FileChannel as FileChannelConfig,
     EmailChannel as EmailChannelConfig,
     WebhookChannel as WebhookChannelConfig,
@@ -38,10 +39,12 @@ class Dispatcher:
         channels: Sequence,
         business_name: str,
         email_config: EmailConfig | None = None,
+        business_config: BusinessConfig | None = None,
     ) -> None:
         self.channels = list(channels)
         self.business_name = business_name
         self.email_config = email_config
+        self.business_config = business_config
         self.failures_dir = resolve_failures_dir(self.channels, business_name)
         self._background_tasks: set[asyncio.Task] = set()
 
@@ -131,5 +134,16 @@ class Dispatcher:
         if isinstance(ch_cfg, EmailChannelConfig):
             if self.email_config is None:
                 raise ValueError("EmailChannel configured but no EmailConfig provided to Dispatcher")
-            return EmailChannel(ch_cfg, self.email_config)
+            templates = self.business_config.message_templates if self.business_config else None
+            transfer_number = (
+                self.business_config.communications.default_transfer_number
+                if self.business_config
+                else ""
+            ) or ""
+            return EmailChannel(
+                ch_cfg,
+                self.email_config,
+                message_templates=templates,
+                default_transfer_number=transfer_number,
+            )
         raise ValueError(f"Unknown channel config type: {type(ch_cfg).__name__}")

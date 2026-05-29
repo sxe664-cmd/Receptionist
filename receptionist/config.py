@@ -649,6 +649,15 @@ class MessageTemplatesConfig(BaseModel):
     quick_sms: str | None = None
     quick_email: str | None = None
     quick_call_script: str | None = None
+    message_email_subject: str | None = None
+    message_email_text: str | None = None
+    message_email_html: str | None = None
+    call_end_email_subject: str | None = None
+    call_end_email_text: str | None = None
+    call_end_email_html: str | None = None
+    booking_email_subject: str | None = None
+    booking_email_text: str | None = None
+    booking_email_html: str | None = None
 
     @field_validator("*")
     @classmethod
@@ -661,6 +670,25 @@ class MessageTemplatesConfig(BaseModel):
             "appointment_time",
             "offset_days",
             "default_transfer_number",
+            "caller_name",
+            "callback_number",
+            "received_at",
+            "message_text",
+            "recording_url",
+            "transcript_path",
+            "caller_phone",
+            "start_ts",
+            "end_ts",
+            "duration",
+            "outcomes",
+            "transfer_target",
+            "agent_end_reason",
+            "appointment_start",
+            "appointment_end",
+            "appointment_link",
+            "faqs_answered",
+            "languages",
+            "call_id",
         }
         fields = {
             field_name.split(".", 1)[0].split("[", 1)[0]

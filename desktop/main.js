@@ -241,10 +241,17 @@ function emitUpdate(payload) {
 }
 
 function setupUpdaterEvents() {
+  if (process.platform === 'darwin') {
+    // Keep Intel legacy Macs and Apple Silicon Macs on separate update channels.
+    const macChannel = process.arch === 'x64' ? 'legacy' : 'latest';
+    autoUpdater.channel = macChannel;
+    autoUpdater.allowDowngrade = false;
+    emitLog('updater', `Configured macOS updater channel: ${macChannel} (${process.arch})`);
+  }
+
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowPrerelease = false;
-  autoUpdater.allowDowngrade = false;
 
   autoUpdater.on('checking-for-update', () => {
     emitLog('updater', 'Checking for updates...');
@@ -491,6 +498,15 @@ ipcMain.handle('business:update', async (_event, payload) => {
   if (payload.quickSms !== undefined) args.push('--quick-sms', payload.quickSms);
   if (payload.quickEmail !== undefined) args.push('--quick-email', payload.quickEmail);
   if (payload.quickCallScript !== undefined) args.push('--quick-call-script', payload.quickCallScript);
+  if (payload.messageEmailSubject !== undefined) args.push('--message-email-subject', payload.messageEmailSubject);
+  if (payload.messageEmailText !== undefined) args.push('--message-email-text', payload.messageEmailText);
+  if (payload.messageEmailHtml !== undefined) args.push('--message-email-html', payload.messageEmailHtml);
+  if (payload.callEndEmailSubject !== undefined) args.push('--call-end-email-subject', payload.callEndEmailSubject);
+  if (payload.callEndEmailText !== undefined) args.push('--call-end-email-text', payload.callEndEmailText);
+  if (payload.callEndEmailHtml !== undefined) args.push('--call-end-email-html', payload.callEndEmailHtml);
+  if (payload.bookingEmailSubject !== undefined) args.push('--booking-email-subject', payload.bookingEmailSubject);
+  if (payload.bookingEmailText !== undefined) args.push('--booking-email-text', payload.bookingEmailText);
+  if (payload.bookingEmailHtml !== undefined) args.push('--booking-email-html', payload.bookingEmailHtml);
   return runDesktopConfig(args);
 });
 

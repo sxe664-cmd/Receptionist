@@ -71,7 +71,15 @@ class CallLifecycle:
             c for c in self.config.messages.channels
             if isinstance(c, EmailChannelConfig)
         ]
-        return [EmailChannel(c, self.config.email) for c in ch_cfgs]
+        return [
+            EmailChannel(
+                c,
+                self.config.email,
+                message_templates=self.config.message_templates,
+                default_transfer_number=self.config.communications.default_transfer_number or "",
+            )
+            for c in ch_cfgs
+        ]
 
     # --- tool-path recorders (called by Receptionist methods) ---
 

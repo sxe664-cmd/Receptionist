@@ -226,6 +226,36 @@
                 <label for="quickCallScript">Call script</label>
                 <textarea id="quickCallScript" rows="3" placeholder="Hi {recipient_name}, this is {business_name} calling about your appointment."></textarea>
               </details>
+
+              <details>
+                <summary>Message Notification Email</summary>
+                <label for="messageEmailSubject">Email subject</label>
+                <input id="messageEmailSubject" autocomplete="off" placeholder="New message from {caller_name} - {business_name}" />
+                <label for="messageEmailText">Email body (text)</label>
+                <textarea id="messageEmailText" rows="5" placeholder="Caller: {caller_name}&#10;Callback: {callback_number}&#10;Message: {message_text}"></textarea>
+                <label for="messageEmailHtml">Email body (HTML, optional)</label>
+                <textarea id="messageEmailHtml" rows="4" placeholder="<p>Caller: {caller_name}</p>"></textarea>
+              </details>
+
+              <details>
+                <summary>Call Summary Email</summary>
+                <label for="callEndEmailSubject">Email subject</label>
+                <input id="callEndEmailSubject" autocomplete="off" placeholder="Call from {caller_phone} - {outcomes} [{business_name}]" />
+                <label for="callEndEmailText">Email body (text)</label>
+                <textarea id="callEndEmailText" rows="5" placeholder="Caller: {caller_phone}&#10;Start: {start_ts}&#10;Duration: {duration}&#10;Outcomes: {outcomes}"></textarea>
+                <label for="callEndEmailHtml">Email body (HTML, optional)</label>
+                <textarea id="callEndEmailHtml" rows="4" placeholder="<p>Call summary for {business_name}</p>"></textarea>
+              </details>
+
+              <details>
+                <summary>Booking Notification Email</summary>
+                <label for="bookingEmailSubject">Email subject</label>
+                <input id="bookingEmailSubject" autocomplete="off" placeholder="New appointment booked: {caller_phone} - {appointment_start} [{business_name}]" />
+                <label for="bookingEmailText">Email body (text)</label>
+                <textarea id="bookingEmailText" rows="5" placeholder="Caller: {caller_phone}&#10;Start: {appointment_start}&#10;End: {appointment_end}&#10;Event: {appointment_link}"></textarea>
+                <label for="bookingEmailHtml">Email body (HTML, optional)</label>
+                <textarea id="bookingEmailHtml" rows="4" placeholder="<p>New booking for {business_name}</p>"></textarea>
+              </details>
             </div>
           </section>
         </form>

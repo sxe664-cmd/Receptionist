@@ -246,6 +246,15 @@ def test_desktop_config_update_persists_all_message_templates(tmp_path):
         "quick_sms": "Quick SMS for {recipient_name}",
         "quick_email": "Quick email for {business_name}\nCall {default_transfer_number}.",
         "quick_call_script": "Call script for {recipient_name}",
+        "message_email_subject": "Message from {caller_name}",
+        "message_email_text": "Caller {caller_name} said: {message_text}",
+        "message_email_html": "<p>{message_text}</p>",
+        "call_end_email_subject": "Call summary {outcomes}",
+        "call_end_email_text": "Caller {caller_phone} duration {duration}",
+        "call_end_email_html": "<p>{outcomes}</p>",
+        "booking_email_subject": "Booked {appointment_start}",
+        "booking_email_text": "Booking for {caller_phone} at {appointment_start}",
+        "booking_email_html": "<p>{appointment_link}</p>",
     }
 
     args = desktop_config.build_parser().parse_args(
@@ -279,6 +288,24 @@ def test_desktop_config_update_persists_all_message_templates(tmp_path):
             expected_templates["quick_email"],
             "--quick-call-script",
             expected_templates["quick_call_script"],
+            "--message-email-subject",
+            expected_templates["message_email_subject"],
+            "--message-email-text",
+            expected_templates["message_email_text"],
+            "--message-email-html",
+            expected_templates["message_email_html"],
+            "--call-end-email-subject",
+            expected_templates["call_end_email_subject"],
+            "--call-end-email-text",
+            expected_templates["call_end_email_text"],
+            "--call-end-email-html",
+            expected_templates["call_end_email_html"],
+            "--booking-email-subject",
+            expected_templates["booking_email_subject"],
+            "--booking-email-text",
+            expected_templates["booking_email_text"],
+            "--booking-email-html",
+            expected_templates["booking_email_html"],
         ]
     )
 

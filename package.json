@@ -1,6 +1,6 @@
 {
   "name": "ai-receptionist-desktop",
-  "version": "0.1.25",
+  "version": "0.1.27",
   "private": false,
   "description": "Desktop console for AIReceptionist",
   "main": "desktop/main.js",
@@ -10,11 +10,17 @@
     "desktop:dev": "node scripts/desktop-dev.js",
     "desktop:runtime:build": "node scripts/build-python-runtime.js",
     "desktop:check": "node --check desktop/main.js && node --check desktop/preload.js && node --check desktop/appointment_email.js && node --check desktop/appointment_menu.js && node --check desktop/renderer.js",
-    "desktop:dist": "npm run desktop:runtime:build && electron-builder --win nsis --mac dmg zip --x64 --arm64 --publish never",
+    "desktop:dist": "npm run desktop:dist:all",
     "desktop:dist:win": "npm run desktop:runtime:build && electron-builder --win nsis --x64 --publish never",
-    "desktop:dist:mac": "npm run desktop:runtime:build && electron-builder --mac dmg zip --arm64 --publish never",
+    "desktop:dist:mac": "npm run desktop:dist:mac:arm64",
+    "desktop:dist:mac:arm64": "npm run desktop:runtime:build && electron-builder --config config/electron-builder.mac-arm64.json --mac dmg zip --arm64 --publish never",
+    "desktop:dist:mac:x64": "npm run desktop:runtime:build && electron-builder --config config/electron-builder.mac-x64.json --mac dmg zip --x64 --publish never",
+    "desktop:dist:all": "npm run desktop:dist:win && npm run desktop:dist:mac:arm64 && npm run desktop:dist:mac:x64",
     "desktop:release:win": "npm run desktop:runtime:build && electron-builder --win nsis --x64 --publish always",
-    "desktop:release:mac": "npm run desktop:runtime:build && electron-builder --mac dmg zip --arm64 --publish always"
+    "desktop:release:mac": "npm run desktop:release:mac:arm64",
+    "desktop:release:mac:arm64": "npm run desktop:runtime:build && electron-builder --config config/electron-builder.mac-arm64.json --mac dmg zip --arm64 --publish always",
+    "desktop:release:mac:x64": "npm run desktop:runtime:build && electron-builder --config config/electron-builder.mac-x64.json --mac dmg zip --x64 --publish always",
+    "desktop:release:all": "npm run desktop:release:win && npm run desktop:release:mac:arm64 && npm run desktop:release:mac:x64"
   },
   "devDependencies": {
     "electron": "^33.3.1",
@@ -64,6 +70,10 @@
     "mac": {
       "artifactName": "AIReceptionist-macOS.${ext}",
       "icon": "desktop/assets/icon.icns",
+      "minimumSystemVersion": "11.0",
+      "forceCodeSigning": true,
+      "hardenedRuntime": true,
+      "notarize": true,
       "target": [
         {
           "target": "dmg",
